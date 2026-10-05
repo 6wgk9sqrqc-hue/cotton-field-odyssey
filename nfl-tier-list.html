@@ -46,7 +46,7 @@
   .btn:focus-visible, .chip:focus-visible, .label:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
   .board { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
-  .row { display: grid; grid-template-columns: 76px 1fr; min-height: 76px; }
+  .row { display: grid; grid-template-columns: 76px 1fr; min-height: 88px; }
   .row + .row { border-top: 1px solid var(--line); }
   .label { display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 2.6rem; color: var(--tier-ink); cursor: pointer; user-select: none; border: 0; }
   .lane { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; padding: 6px; background: var(--lane); min-width: 0; transition: background .12s; }
@@ -59,24 +59,24 @@
   #pool { border: 1px dashed var(--line); border-radius: 8px; min-height: 80px; background: var(--surface); }
 
   .chip {
-    width: 78px; height: 64px; padding-inline: 2px; border-radius: 6px; flex: none;
+    width: 76px; height: 76px; padding-block: 4px 2px; border-radius: 6px; flex: none;
     background: var(--c1); color: var(--ink, #fff);
     border-bottom: 5px solid var(--c2);
-    display: grid; place-content: center; text-align: center; gap: 1px;
+    display: grid; justify-items: center; align-content: center; text-align: center; gap: 2px;
     cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none;
     box-shadow: 0 1px 2px rgb(0 0 0 / .2);
   }
-  .chip b { font-family: var(--display); font-weight: 900; font-size: 1.45rem; line-height: 1; letter-spacing: .02em; }
-  .chip span { font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; line-height: 1; opacity: .9; white-space: nowrap; }
+  .chip svg { width: 42px; height: 42px; display: block; overflow: visible; filter: drop-shadow(0 1px 1px rgb(0 0 0 / .25)); }
+  .chip b { font-family: var(--display); font-weight: 900; font-size: 1.05rem; line-height: 1; letter-spacing: .02em; }
   .chip.placeholder { opacity: .3; }
   .chip.selected { outline: 3px solid var(--focus); outline-offset: 2px; }
   .ghost { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 10; cursor: grabbing; transform-origin: center; box-shadow: 0 8px 20px rgb(0 0 0 / .35); }
   @media (max-width: 480px) {
-    .row { grid-template-columns: 52px 1fr; min-height: 64px; }
+    .row { grid-template-columns: 52px 1fr; min-height: 74px; }
     .label { font-size: 2rem; }
-    .chip { width: 62px; height: 54px; }
-    .chip b { font-size: 1.2rem; }
-    .chip span { font-size: .5rem; letter-spacing: .02em; }
+    .chip { width: 60px; height: 62px; }
+    .chip svg { width: 34px; height: 34px; }
+    .chip b { font-size: .85rem; }
   }
   @media (prefers-reduced-motion: reduce) { .lane { transition: none; } }
 </style>
@@ -126,6 +126,65 @@
     ["SEA","Seahawks","#002244","#69BE28"], ["TB","Buccaneers","#D50A0A","#34302B"],
     ["TEN","Titans","#0C2340","#4B92DB"], ["WAS","Commanders","#5A1414","#FFB612"]
   ];
+  // Original emblem drawings (48x48), one per team
+  const W = "#fff", K = "#101820";
+  const star = (cx, cy, R, r, n = 5, rot = -90) => {
+    const pts = [];
+    for (let i = 0; i < n * 2; i++) {
+      const a = (rot + i * 180 / n) * Math.PI / 180, rad = i % 2 ? r : R;
+      pts.push((cx + rad * Math.cos(a)).toFixed(1) + "," + (cy + rad * Math.sin(a)).toFixed(1));
+    }
+    return pts.join(" ");
+  };
+  const astro = (cx, cy, r, fill) =>
+    `<path d="M${cx} ${cy - r}Q${cx} ${cy} ${cx + r} ${cy}Q${cx} ${cy} ${cx} ${cy + r}Q${cx} ${cy} ${cx - r} ${cy}Q${cx} ${cy} ${cx} ${cy - r}Z" fill="${fill}"/>`;
+  const txt = (s, fill, size, stroke = "none", y = 24, sw = 3) =>
+    `<text x="24" y="${y}" text-anchor="middle" dominant-baseline="central" font-family="Big Shoulders Display, Arial Narrow, Impact, sans-serif" font-weight="900" font-size="${size}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" paint-order="stroke" stroke-linejoin="round">${s}</text>`;
+  const bird = (head, beak, eye, outline = "none", crest = true) =>
+    `<g stroke="${outline}" stroke-width="1.5" stroke-linejoin="round">` +
+    (crest ? `<path d="M20 14L9 5L23 10L19 1L30 11Z" fill="${head}"/>` : "") +
+    `<path d="M38 18L47 22L38 27Z" fill="${beak}"/>` +
+    `<path d="M7 40C7 24 16 11 29 11C35 11 39 14 40 19L40 26C38 34 29 40 19 40Z" fill="${head}"/></g>` +
+    `<path d="M26 15L40 19L39 22L28 21Z" fill="${eye}" opacity=".9"/><circle cx="34" cy="19.5" r="2" fill="${W}"/>`;
+  const cat = (face, eye, extra = "", outline = "none") =>
+    `<path d="M9 15L12 3L21 11L27 11L36 3L39 15C43 22 41 35 24 43C7 35 5 22 9 15Z" fill="${face}" stroke="${outline}" stroke-width="1.5" stroke-linejoin="round"/>` + extra +
+    `<path d="M14 22L21 24L20 27L15 26Z M34 22L27 24L28 27L33 26Z" fill="${eye}"/><path d="M21 32L27 32L24 36Z" fill="${K}"/>`;
+
+  const LOGOS = {
+    ARI: bird(W, "#FFB612", K),
+    ATL: `<path d="M6 42L19 10L45 5L30 14L41 14L28 22L35 22L22 31Z" fill="${K}" stroke="${W}" stroke-width="1.5" stroke-linejoin="round"/>`,
+    BAL: `<path d="M10 14L2 8L4 20Z M38 14L46 8L44 20Z" fill="${K}"/><path d="M10 6L38 6L38 24C38 34 30 40 24 44C18 40 10 34 10 24Z" fill="#9E7C0C" stroke="${K}" stroke-width="2"/>` + txt("B", "#241773", 26, "none", 23),
+    BUF: `<path d="M5 31C5 21 13 15 21 15C25 10 34 10 38 14C42 16 44 22 42 26L40 35L36 35L36 29L21 31L19 37L15 37L15 31C11 33 8 33 5 31Z" fill="${W}"/><path d="M38 14L44 11" stroke="${W}" stroke-width="2.5" stroke-linecap="round"/><path d="M3 38C16 30 30 32 46 23" stroke="#C60C30" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+    CAR: cat(K, "#0085CA", "", "#BFC0BF"),
+    CHI: txt("C", "#C83803", 46, W, 23, 3),
+    CIN: cat("#FB4F14", W, `<path d="M24 11L22 18L24 22L26 18Z M15 13L18 19L13 18Z M33 13L30 19L35 18Z M8 25L15 29L8 30Z M40 25L33 29L40 30Z M14 36L19 34L18 39Z M34 36L29 34L30 39Z" fill="${K}"/>`, K),
+    CLE: `<path d="M5 30C5 14 18 6 30 8C40 10 44 18 44 26L36 26L34 32L26 32C24 36 18 38 12 36C7 34 5 32 5 30Z" fill="#FF3C00" stroke="${W}" stroke-width="1.5"/><path d="M14 9C20 16 26 24 30 32" stroke="${W}" stroke-width="2.5" fill="none"/><path d="M34 26L46 26M36 31L46 31M42 26L42 34" stroke="#BFC0BF" stroke-width="2" fill="none"/>`,
+    DAL: `<polygon points="${star(24, 25, 21, 8.5)}" fill="${W}"/><polygon points="${star(24, 25, 15.5, 6.3)}" fill="#003594"/>`,
+    DEN: `<path d="M16 10L5 12L13 16L3 20L13 23L5 29L15 27" fill="#002244"/><path d="M14 43L18 27C14 23 12 16 16 10C20 4 30 2 36 8L45 12L41 16L43 20L36 20C34 26 30 30 30 43Z" fill="${W}" stroke="#002244" stroke-width="1.5" stroke-linejoin="round"/><circle cx="33" cy="11" r="1.6" fill="#FB4F14"/>`,
+    DET: `<polygon points="${star(24, 24, 23, 15, 12, 0)}" fill="#B0B7BC"/>` + cat(W, "#0076B6"),
+    GB: `<ellipse cx="24" cy="24" rx="22" ry="16" fill="#FFB612"/><ellipse cx="24" cy="24" rx="19" ry="13" fill="${W}"/>` + txt("G", "#203731", 26, "none", 25),
+    HOU: `<path d="M14 16C10 14 6 10 3 4C10 8 14 10 18 10L30 10C34 10 38 8 45 4C42 10 38 14 34 16C36 26 32 38 24 43C16 38 12 26 14 16Z" fill="${W}"/><path d="M24 10L30 10C34 10 38 8 45 4C42 10 38 14 34 16C36 26 32 38 24 43Z" fill="#A71930"/><polygon points="${star(29, 21, 3.5, 1.5)}" fill="${W}"/>`,
+    IND: `<path d="M9 5L19 5L19 26A5 5 0 0 0 29 26L29 5L39 5L39 26A15 15 0 0 1 9 26Z" fill="${W}"/><g fill="#002C5F"><circle cx="14" cy="10" r="1.4"/><circle cx="14" cy="17" r="1.4"/><circle cx="34" cy="10" r="1.4"/><circle cx="34" cy="17" r="1.4"/><circle cx="15" cy="32" r="1.4"/><circle cx="33" cy="32" r="1.4"/></g>`,
+    JAX: cat("#D7A22A", "#006778", `<g fill="${K}"><circle cx="17" cy="15" r="1.5"/><circle cx="31" cy="15" r="1.5"/><circle cx="24" cy="17" r="1.6"/><circle cx="13" cy="31" r="1.4"/><circle cx="35" cy="31" r="1.4"/></g>`),
+    KC: `<path d="M2 24L30 7L46 7L38 24L46 41L30 41Z" fill="${W}"/>` + txt("KC", "#E31837", 19, "none", 25),
+    LV: `<path d="M6 6L42 42M42 6L6 42" stroke="#A5ACAF" stroke-width="3.5" stroke-linecap="round"/><path d="M13 8L35 8L35 24C35 32 29 37 24 40C19 37 13 32 13 24Z" fill="${K}" stroke="#A5ACAF" stroke-width="2.5"/>` + txt("R", "#A5ACAF", 18, "none", 23),
+    LAC: `<path d="M29 2L9 28L22 28L17 46L40 17L27 17Z" fill="#FFC20E" stroke="${W}" stroke-width="2" stroke-linejoin="round"/>`,
+    LAR: `<path d="M8 12C28 3 45 16 40 31C37 41 23 43 19 35C16 29 21 23 28 26" stroke="${W}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M8 12C28 3 45 16 40 31C37 41 23 43 19 35C16 29 21 23 28 26" stroke="#FFD100" stroke-width="5" fill="none" stroke-linecap="round"/>`,
+    MIA: `<circle cx="27" cy="21" r="13" fill="#FC4C02"/><path d="M4 36C13 18 32 12 45 24" stroke="${W}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M24 20L28 11L31 21Z" fill="${W}"/>`,
+    MIN: `<path d="M13 30C5 22 5 10 12 4C11 13 14 21 20 26Z M35 30C43 22 43 10 36 4C37 13 34 21 28 26Z" fill="#FFC62F"/><path d="M11 36A13 13 0 0 1 37 36Z" fill="${W}"/><rect x="9" y="35" width="30" height="5" rx="1" fill="#FFC62F"/>`,
+    NE: `<path d="M3 28C10 16 17 14 24 19C31 14 38 16 45 28C37 25 30 27 24 32C18 27 11 25 3 28Z" fill="${W}"/><path d="M8 26C14 23 19 24 24 28C29 24 34 23 40 26" stroke="#C60C30" stroke-width="2.5" fill="none"/><polygon points="${star(24, 20, 4, 1.7)}" fill="#C60C30"/>`,
+    NO: `<g fill="${K}"><path d="M24 3C33 12 31 24 24 31C17 24 15 12 24 3Z"/><path d="M22 29C14 31 5 25 7 16C9 11 16 11 16 18C12 18 12 22 16 24Z"/><path d="M26 29C34 31 43 25 41 16C39 11 32 11 32 18C36 18 36 22 32 24Z"/><rect x="11" y="28" width="26" height="4" rx="1"/><path d="M21 32L27 32L24 45Z"/><path d="M18 32C16 38 12 40 10 38C12 36 13 34 14 32Z M30 32C32 38 36 40 38 38C36 36 35 34 34 32Z"/></g>`,
+    NYG: txt("ny", W, 34, "#A71930", 21, 3.5),
+    NYJ: `<path d="M24 3L27 18L45 26L45 30L27 26L26 38L32 42L32 45L24 43L16 45L16 42L22 38L21 26L3 30L3 26L21 18Z" fill="${W}"/>`,
+    PHI: bird(W, "#A5ACAF", K, "#A5ACAF", false),
+    PIT: `<circle cx="24" cy="24" r="20" fill="${W}" stroke="${K}" stroke-width="2.5"/>` + astro(30, 15, 7, "#FFB612") + astro(36, 24, 7, "#C60C30") + astro(30, 33, 7, "#00539B"),
+    SF: `<ellipse cx="24" cy="24" rx="22" ry="15" fill="${W}" stroke="#B3995D" stroke-width="2.5"/>` + txt("SF", "#AA0000", 24, "none", 25),
+    SEA: bird("#A5ACAF", "#002244", "#69BE28", W),
+    TB: `<path d="M5 4L5 46" stroke="#B1BABF" stroke-width="2.5"/><path d="M6 6C18 10 30 2 44 6L44 30C30 26 18 34 6 30Z" fill="#34302B"/><circle cx="25" cy="16" r="6.5" fill="${W}"/><rect x="21" y="19" width="8" height="6" rx="1" fill="${W}"/><circle cx="22.5" cy="15.5" r="1.8" fill="#34302B"/><circle cx="27.5" cy="15.5" r="1.8" fill="#34302B"/><path d="M14 10L36 28M36 10L14 28" stroke="${W}" stroke-width="1.5" opacity=".7"/>`,
+    TEN: `<path d="M2 30C10 28 14 24 18 18L12 34Z" fill="#C8102E"/><circle cx="27" cy="24" r="17" fill="${W}" stroke="#4B92DB" stroke-width="3"/>` + `<g transform="translate(3 0)">${txt("T", "#0C2340", 26, "none", 25)}</g>` + `<polygon points="${star(17, 12, 3, 1.3)}" fill="#C8102E"/><polygon points="${star(27, 9, 3, 1.3)}" fill="#C8102E"/><polygon points="${star(37, 12, 3, 1.3)}" fill="#C8102E"/>`,
+    WAS: txt("W", "#5A1414", 40, "#FFB612", 24, 4),
+  };
+
   const KEY = "nfl-tier-list-v1";
   const board = document.getElementById("board");
   const pool = document.getElementById("pool");
@@ -163,7 +222,7 @@
     el.title = name;
     el.setAttribute("role", "button");
     el.setAttribute("aria-label", abbr + " " + name);
-    el.innerHTML = `<b>${abbr}</b><span>${name}</span>`;
+    el.innerHTML = `<svg viewBox="0 0 48 48" aria-hidden="true">${LOGOS[abbr]}</svg><b>${abbr}</b>`;
     chips[abbr] = el;
     el.addEventListener("pointerdown", startDrag);
     el.addEventListener("keydown", (e) => {
