@@ -105,7 +105,27 @@ export function useEntry(entry) {
   }
   if (p.ghost) { emit('error', 'You can\'t do that while dead.'); return; }
   if (p.flying) return;
+  // on touch screens an attack with no enemy targeted picks the nearest one in front
+  const ab = ABILITIES[entry];
+  if (G.isTouch && ab && (ab.target === undefined || ab.target === 'enemy') && (!p.target || p.target.dead || !canAttack(p, p.target))) {
+    const t = softTarget(p);
+    if (t) setTarget(t);
+  }
   castAbility(p, entry, p.target);
+}
+export function softTarget(p, maxRange = 36) {
+  let best = null, bs = 1e9;
+  for (const u of G.units) {
+    if (u.dead || u === p || u.kind === 'npc' || !canAttack(p, u) || !u.group.visible) continue;
+    const d = distance(p, u);
+    if (d > maxRange) continue;
+    const a = Math.atan2(u.pos.x - p.pos.x, u.pos.z - p.pos.z);
+    let da = Math.abs(a - p.facing) % (Math.PI * 2);
+    if (da > Math.PI) da = Math.PI * 2 - da;
+    const score = d + da * 9 - (u.threat?.has(p) ? 12 : 0) - (u.faction === 'neutral' ? -6 : 0);
+    if (score < bs) { bs = score; best = u; }
+  }
+  return best;
 }
 export function useBar(n, i) {
   const p = G.player;
@@ -123,7 +143,7 @@ function entryIcon(entry) {
   return ab ? icon(ab.icon ?? 'star', ab.school) : '';
 }
 
-function updateSlot(s, entry) {
+export function updateSlot(s, entry) {
   const p = G.player;
   if (s.entry !== entry) {
     s.entry = entry;

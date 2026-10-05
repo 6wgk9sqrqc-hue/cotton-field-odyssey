@@ -1,7 +1,8 @@
 // Boot, character creation/loading and the main loop.
 import { G, emit, on } from './state.js';
 import './data/abilities/index.js';
-import { initScene, updateScene } from './engine/scene.js';
+import { initScene, updateScene, render, setPixelRatio } from './engine/scene.js';
+import { preset } from './engine/gfx.js';
 import { initFx, updateFx } from './engine/fx.js';
 import { heightAt } from './engine/terrain.js';
 import { dungeonWalkable } from './engine/collision.js';
@@ -20,6 +21,7 @@ import { updateRested } from './engine/progression.js';
 import { initHud, updateHud, chat, entryTooltip } from './ui/hud.js';
 import { initWindows, toggle, closeAll, pickup, dropOnBar, slotMenu, openQuestLog, clearCursor } from './ui/windows.js';
 import { initMaps } from './ui/minimap.js';
+import { initTouchHud, updateTouchHud } from './ui/touch.js';
 import { initSfx } from './ui/sfx.js';
 import { showStart, hideStart } from './ui/charselect.js';
 import { saveChar, newSaveId, serialize } from './save.js';
@@ -58,6 +60,7 @@ async function boot() {
     modalOpen: () => !$('startScreen').hidden, logout,
   };
   initHud();
+  initTouchHud();
   initWindows();
   initSfx();
   progress('Ready', 1);
@@ -189,8 +192,11 @@ function loop(now) {
       for (let i = 0; i < n; i++) tick(n > 1 ? 0.05 : dt);
     } else idleCamera(dt);
     const t1 = performance.now();
-    G.renderer.render(G.scene, G.camera);
+    G.renderer.info.autoReset = false;
+    G.renderer.info.reset();
+    render();
     const t2 = performance.now();
+    adaptResolution(dt);
     G.perf = { tick: (G.perf?.tick ?? 0) * 0.95 + (t1 - t0) * 0.05, render: (G.perf?.render ?? 0) * 0.95 + (t2 - t1) * 0.05, calls: G.renderer.info.render.calls, tris: G.renderer.info.render.triangles };
   } catch (e) {
     console.error(e);
@@ -199,13 +205,27 @@ function loop(now) {
   fpsT += dt;
   if (fpsT > 1) { G.fps = frames / fpsT; frames = 0; fpsT = 0; }
 }
+// Dynamic resolution: drop the render scale when frames run long, raise it
+// again when there is headroom. Frame time is measured between animation frames.
+let slowT = 0, fastT = 0;
+function adaptResolution(dt) {
+  if (window.__noDynRes || !G.running || document.hidden) return;
+  const P = preset();
+  const ms = dt * 1000;
+  if (ms > 24) { slowT += dt; fastT = 0; } else if (ms < 15) { fastT += dt; slowT = Math.max(0, slowT - dt); } else { slowT = Math.max(0, slowT - dt * 0.5); fastT = 0; }
+  const minPr = Math.min(G.maxPixelRatio, P.minPixelRatio);
+  if (slowT > 1.5 && G.pixelRatio > minPr + 0.01) { setPixelRatio(Math.max(minPr, G.pixelRatio - 0.15)); slowT = 0; }
+  else if (fastT > 4 && G.pixelRatio < G.maxPixelRatio - 0.01) { setPixelRatio(Math.min(G.maxPixelRatio, G.pixelRatio + 0.1)); fastT = 0; }
+}
 const ACTIVE_R = 130;
+// how far away creatures and people are drawn
+const UNIT_FAR = { low: 80, medium: 105, high: 150 };
 function tick(dt) {
   G.time += dt;
   G.dt = dt;
   const p = G.player;
   updatePlayer(dt);
-  const far = G.scene.fog.far + 25;
+  const far = Math.min(G.scene.fog.far + 25, UNIT_FAR[G.quality] ?? 120);
   for (const u of [...G.units]) {
     if (!G.units.includes(u)) continue;
     const d = Math.hypot(u.pos.x - p.pos.x, u.pos.z - p.pos.z);
@@ -237,6 +257,7 @@ function tick(dt) {
   updateScene(dt);
   updateFx(dt);
   updateHud(dt);
+  updateTouchHud(dt);
   saveT += dt;
   if (saveT > 15) { saveT = 0; saveChar(p); }
 }

@@ -35,9 +35,15 @@ It can also be hosted on GitHub Pages, Netlify or similar. After the first load 
 | `C B P N L M` | character, bags, spellbook, talents, quest log, map |
 | `Esc` | close windows, clear target, game menu |
 
-On touch screens: drag on the left half to move, drag on the right half to turn the camera,
-pinch to zoom, tap a creature to target it and tap again to attack or talk. Hold an action
-button to move or clear it.
+On phones and tablets the screen switches to a touch layout:
+
+- Drag anywhere on the left side to move with a floating joystick, or tap the ground to walk there.
+- Drag on the right side to turn the camera; pinch to zoom.
+- The big round button attacks, talks, loots or uses whatever you have targeted or are standing
+  next to, and walks you over first if it is out of reach. Loot is picked up automatically.
+- Six abilities sit in two arcs around it; **Page** flips through four pages (both action bars).
+  Abilities used with nothing targeted pick the nearest enemy in front of you.
+- Hold an ability to move or clear it. The ☰ button opens every window; windows fill the screen.
 
 ## What is in the game
 
@@ -74,14 +80,31 @@ towns. Hire a tank, a healer and damage dealers at the Spire Gate camp for the d
 
 Progress saves automatically to the browser's local storage.
 
+## Graphics
+
+Everything is drawn with three.js and generated in code, with three quality levels
+(picked automatically, changeable in the game menu):
+
+| | Low | Medium | High |
+|---|---|---|---|
+| Sun shadows | off | 34-yard radius | 55-yard radius, soft |
+| Grass carpet radius | 26 yd | 34 yd | 44 yd |
+| Bloom and vignette | off | off | on |
+
+All levels share the shader sky with drifting clouds, detail-textured terrain, water with depth,
+foam and sun glints, animated lava, wind in grass, crops and trees, plank, stone and shingle
+patterns on buildings, rim-lit characters and ambient particles per zone. Resolution scales
+down by itself when frames take too long and recovers when there is headroom.
+
 ## Code layout
 
 ```
 index.html, css/game.css    page shell and interface styles
 js/main.js                  boot, character creation, main loop
 js/engine/                  terrain, scenery, units, combat, spells, AI, quests, inventory, world
+js/engine/gfx.js, envshaders.js, post.js, grassfield.js, ambient.js   graphics: quality, shaders, bloom, grass, particles
 js/data/                    classes, abilities, talents, items, creatures, NPCs, spawns, quests
-js/ui/                      HUD, windows, tooltips, icons, minimap, character select, sound
+js/ui/                      HUD, touch controls, windows, tooltips, icons, minimap, character select, sound
 js/lib/three.module.min.js  three.js r170 (MIT)
 ```
 

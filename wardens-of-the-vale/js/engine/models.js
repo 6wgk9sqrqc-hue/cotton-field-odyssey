@@ -1,6 +1,7 @@
 // Procedural low-poly models built from primitives. Every model returns a
 // root group plus named pivots that animate() moves each frame.
 import * as THREE from '../lib/three.module.min.js';
+import { addRimLight } from './gfx.js';
 
 const matCache = new Map();
 export function mat(color, opts = {}) {
@@ -8,7 +9,7 @@ export function mat(color, opts = {}) {
   if (matCache.has(k)) return matCache.get(k);
   let m;
   if (opts.basic) m = new THREE.MeshBasicMaterial({ color, transparent: opts.opacity < 1, opacity: opts.opacity ?? 1, depthWrite: !(opts.opacity < 1) });
-  else m = new THREE.MeshLambertMaterial({ color, emissive: opts.emissive ?? 0x000000, transparent: (opts.opacity ?? 1) < 1, opacity: opts.opacity ?? 1 });
+  else m = addRimLight(new THREE.MeshLambertMaterial({ color, emissive: opts.emissive ?? 0x000000, transparent: (opts.opacity ?? 1) < 1, opacity: opts.opacity ?? 1 }));
   matCache.set(k, m);
   return m;
 }
@@ -17,12 +18,100 @@ function cached(key, make) {
   if (!geoCache.has(key)) geoCache.set(key, make());
   return geoCache.get(key);
 }
-export const box = (w, h, d) => cached(`b${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
-export const sphere = (r, s = 8) => cached(`s${r},${s}`, () => new THREE.SphereGeometry(r, s, Math.max(4, s - 2)));
+// Boxes get softly rounded edges: the outer ring of a 3x3x3-segment cube bends
+// around a radius while the faces stay flat, and the normals follow the bevel.
+function roundedBox(w, h, d) {
+  const r = Math.min(0.08, Math.min(w, h, d) * 0.3);
+  if (r < 0.012) return new THREE.BoxGeometry(w, h, d);
+  const g = new THREE.BoxGeometry(1, 1, 1, 3, 3, 3);
+  const pos = g.attributes.position, nor = g.attributes.normal;
+  const half = [w / 2, h / 2, d / 2];
+  const c = [0, 0, 0], inner = [0, 0, 0], out = [0, 0, 0];
+  for (let i = 0; i < pos.count; i++) {
+    c[0] = pos.getX(i); c[1] = pos.getY(i); c[2] = pos.getZ(i);
+    for (let a = 0; a < 3; a++) {
+      const ia = half[a] - r;
+      const coord = Math.abs(c[a]) > 0.4 ? Math.sign(c[a]) * half[a] : Math.sign(c[a]) * ia;
+      inner[a] = Math.max(-ia, Math.min(ia, coord));
+      out[a] = coord - inner[a];
+    }
+    const len = Math.hypot(out[0], out[1], out[2]);
+    if (len > 1e-6) {
+      const nx = out[0] / len, ny = out[1] / len, nz = out[2] / len;
+      pos.setXYZ(i, inner[0] + nx * r, inner[1] + ny * r, inner[2] + nz * r);
+      nor.setXYZ(i, nx, ny, nz);
+    } else pos.setXYZ(i, inner[0], inner[1], inner[2]);
+  }
+  g.computeBoundingSphere();
+  return g;
+}
+export const box = (w, h, d) => cached(`b${w},${h},${d}`, () => roundedBox(w, h, d));
+export const sphere = (r, s = 10) => cached(`s${r},${s}`, () => new THREE.SphereGeometry(r, s, Math.max(5, s - 3)));
 export const cyl = (rt, rb, h, s = 8) => cached(`c${rt},${rb},${h},${s}`, () => new THREE.CylinderGeometry(rt, rb, h, s));
 export const cone = (r, h, s = 8) => cached(`k${r},${h},${s}`, () => new THREE.ConeGeometry(r, h, s));
 export const ico = (r, d = 0) => cached(`i${r},${d}`, () => new THREE.IcosahedronGeometry(r, d));
 export const torus = (r, t, arc = Math.PI * 2) => cached(`t${r},${t},${arc}`, () => new THREE.TorusGeometry(r, t, 5, 12, arc));
+
+// ---------------- batching ----------------
+// Opaque parts that share a pivot are merged into one vertex-colored mesh, so
+// a character costs one draw call per moving joint instead of one per part.
+// Merged geometry is cached by model spec: every wolf of a kind shares it.
+const bakedMat = addRimLight(new THREE.MeshLambertMaterial({ vertexColors: true }));
+const bakeCache = new Map();
+export function bakeModel(m, key) {
+  const refs = new Set();
+  for (const v of Object.values(m)) {
+    if (v?.isObject3D) refs.add(v);
+    else if (Array.isArray(v)) for (const x of v) if (x?.isObject3D) refs.add(x);
+  }
+  const groups = [];
+  m.root.traverse((o) => { if (!o.isMesh) groups.push(o); });
+  groups.forEach((g, gi) => {
+    const list = g.children.filter((c) => c.isMesh && !refs.has(c) && !c.children.length && c.material?.isMeshLambertMaterial && !c.material.transparent && c.material.emissive.getHex() === 0);
+    if (list.length < 2) return;
+    const ck = key !== undefined ? key + '#' + gi : null;
+    let geo = ck ? bakeCache.get(ck) : null;
+    if (!geo) { geo = mergeMeshes(list); if (ck) bakeCache.set(ck, geo); }
+    for (const c of list) g.remove(c);
+    g.add(new THREE.Mesh(geo, bakedMat));
+  });
+  return m;
+}
+function mergeMeshes(list) {
+  let nv = 0, ni = 0;
+  for (const c of list) {
+    c.updateMatrix();
+    const g = c.geometry;
+    nv += g.attributes.position.count;
+    ni += g.index ? g.index.count : g.attributes.position.count;
+  }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3);
+  const index = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+  const v = new THREE.Vector3(), nm = new THREE.Matrix3();
+  let vo = 0, io = 0;
+  for (const c of list) {
+    const g = c.geometry, pa = g.attributes.position, na = g.attributes.normal, n = pa.count;
+    nm.getNormalMatrix(c.matrix);
+    const { r, g: gg, b } = c.material.color;
+    for (let i = 0; i < n; i++) {
+      const k = (vo + i) * 3;
+      v.fromBufferAttribute(pa, i).applyMatrix4(c.matrix);
+      pos[k] = v.x; pos[k + 1] = v.y; pos[k + 2] = v.z;
+      v.fromBufferAttribute(na, i).applyMatrix3(nm).normalize();
+      nor[k] = v.x; nor[k + 1] = v.y; nor[k + 2] = v.z;
+      col[k] = r; col[k + 1] = gg; col[k + 2] = b;
+    }
+    if (g.index) { const ia = g.index.array; for (let k = 0; k < ia.length; k++) index[io + k] = ia[k] + vo; io += ia.length; } else { for (let k = 0; k < n; k++) index[io + k] = vo + k; io += n; }
+    vo += n;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  out.computeBoundingSphere();
+  return out;
+}
 
 function mesh(geo, color, x = 0, y = 0, z = 0, opts) {
   const m = new THREE.Mesh(geo, typeof color === 'object' ? color : mat(color, opts));
@@ -230,6 +319,9 @@ export function humanoid(o = {}) {
   const handL = pivot(0, -armLen, 0.02);
   const handR = pivot(0, -armLen, 0.02);
   armL.add(handL); armR.add(handR);
+  const handCol = o.gloves ?? skin;
+  armL.add(mesh(box(armW * 0.82, 0.11, armW * 0.95), handCol, 0, -armLen - 0.02, 0.01));
+  armR.add(mesh(box(armW * 0.82, 0.11, armW * 0.95), handCol, 0, -armLen - 0.02, 0.01));
   if (o.shoulders) {
     torsoGroup.add(mesh(box(0.26, 0.14, 0.3), o.shoulders, -0.38 * W, shoulderY + 0.06, 0));
     torsoGroup.add(mesh(box(0.26, 0.14, 0.3), o.shoulders, 0.38 * W, shoulderY + 0.06, 0));
@@ -250,6 +342,8 @@ export function humanoid(o = {}) {
   legR.add(mesh(box(legW, legLen * 0.6, legW), pants, 0, -legLen * 0.3, 0));
   legL.add(mesh(box(legW * 1.05, legLen * 0.42, legW * 1.15), boots, 0, -legLen * 0.79, 0.02));
   legR.add(mesh(box(legW * 1.05, legLen * 0.42, legW * 1.15), boots, 0, -legLen * 0.79, 0.02));
+  legL.add(mesh(box(legW * 1.02, 0.1, legW * 1.75), boots, 0, -legLen + 0.05, 0.07));
+  legR.add(mesh(box(legW * 1.02, 0.1, legW * 1.75), boots, 0, -legLen + 0.05, 0.07));
   if (o.tail) {
     const t = mesh(box(0.08, 0.08, 0.6), o.tail, 0, hipY, -0.4);
     t.rotation.x = 0.5;

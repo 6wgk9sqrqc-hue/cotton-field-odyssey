@@ -26,7 +26,7 @@ export function initFx() {
 
 const tmpC = new THREE.Color();
 export function burst(p, color, n = 14, speed = 4, life = 0.6, up = 0) {
-  tmpC.setHex(color);
+  tmpC.setHex(color).multiplyScalar(1.7);
   for (let i = 0; i < n; i++) {
     if (parts.length >= MAX) parts.shift();
     const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2;
@@ -38,7 +38,7 @@ export function burst(p, color, n = 14, speed = 4, life = 0.6, up = 0) {
   }
 }
 export function rise(u, color, n = 16) {
-  tmpC.setHex(color);
+  tmpC.setHex(color).multiplyScalar(1.7);
   for (let i = 0; i < n; i++) {
     if (parts.length >= MAX) parts.shift();
     const a = Math.random() * Math.PI * 2, r = Math.random() * (u.radius ?? 0.5) * 1.6;
@@ -55,7 +55,7 @@ export function at(u, color, n = 14, speed = 3) {
 const ringGeo = new THREE.RingGeometry(0.85, 1, 40).rotateX(-Math.PI / 2);
 export function nova(x, y, z, radius, color, dur = 0.5) {
   if (!G.scene) return;
-  const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(1.8), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
   m.position.set(x, y + 0.3, z);
   G.scene.add(m);
   rings.push({ m, t: 0, dur, radius });

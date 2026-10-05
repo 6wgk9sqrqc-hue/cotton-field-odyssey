@@ -91,7 +91,12 @@ export class Unit {
     if (this.model) this.group.remove(this.model.root);
     this.model = model;
     this.group.add(model.root);
-    model.root.traverse((n) => { if (n.isMesh) n.userData.unit = this; });
+    model.root.traverse((n) => {
+      if (!n.isMesh) return;
+      n.userData.unit = this;
+      n.castShadow = !n.material.transparent && !n.material.isMeshBasicMaterial;
+      n.receiveShadow = !n.material.transparent;
+    });
     this.height = model.height;
   }
 

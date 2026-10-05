@@ -8,6 +8,7 @@ import {
   isBehind, distance, unitsNear, addThreat, engage,
 } from './combat.js';
 import { getItem } from '../data/items.js';
+import { burst } from './fx.js';
 
 export const ABILITIES = {};
 export function defineAbility(def) {
@@ -498,9 +499,9 @@ export function projectile(src, tgt, fx, onHit) {
   if (fx.arrow) {
     mesh = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color: fx.color ?? 0xd8c8a0 }));
   } else {
-    mesh = new THREE.Mesh(projGeo, new THREE.MeshBasicMaterial({ color: fx.color ?? 0xffffff }));
+    mesh = new THREE.Mesh(projGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(fx.color ?? 0xffffff).multiplyScalar(2.4) }));
     mesh.scale.setScalar((fx.size ?? 1));
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.glowTex, color: fx.color ?? 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.glowTex, color: new THREE.Color(fx.color ?? 0xffffff).multiplyScalar(1.5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
     glow.scale.setScalar(1.6 * (fx.size ?? 1));
     group.add(glow);
   }
@@ -530,6 +531,7 @@ export function updateProjectiles(dt) {
     tmpV.sub(p.group.position).normalize();
     p.group.position.addScaledVector(tmpV, step);
     if (p.fx.arrow) p.mesh.lookAt(p.group.position.clone().add(tmpV));
+    else if (Math.random() < 0.8) burst(p.group.position, p.fx.color ?? 0xffffff, 1, 0.5, 0.35);
   }
 }
 

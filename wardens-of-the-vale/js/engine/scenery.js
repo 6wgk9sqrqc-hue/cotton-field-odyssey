@@ -3,18 +3,35 @@
 import * as THREE from '../lib/three.module.min.js';
 import { heightAt, zoneAt, roadDistFast, inTown, inField, slopeAt, lavaAt } from './terrain.js';
 import { addCircle, addBox } from './collision.js';
-import { FIELDS, WORLD_HALF, DUNGEON } from '../data/world.js';
+import { FIELDS, WORLD_HALF, DUNGEON, WATER_LEVEL } from '../data/world.js';
 import { STRUCTURES } from '../data/structures.js';
 import { rng, hash2 } from '../util.js';
 import { G } from '../state.js';
+import { windMaterial, structureMaterial, surfaceFor } from './gfx.js';
 
 const vcMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+let structMat = null;
+const windMats = {};
+// How each prop moves in the wind: [amplitude, height where bending starts, speed]
+const WIND = {
+  grass: [0.11, 0, 1.9], wheat: [0.09, 0.1, 1.6], reeds: [0.07, 0.1, 1.4], fern: [0.08, 0.05, 1.5], blighted: [0.06, 0.1, 1.3],
+  bush: [0.035, 0.15, 1.3], oak: [0.006, 1.6, 1.0], appletree: [0.007, 1.4, 1.0], bigtree: [0.003, 3, 0.8],
+  pine: [0.005, 2, 0.9], cypress: [0.004, 2.5, 0.8], deadtree: [0.003, 1.5, 0.9],
+};
+const CASTS = new Set(['oak', 'appletree', 'pine', 'bigtree', 'cypress', 'deadtree', 'rock', 'bigrock', 'ashspike', 'emberrock', 'bush', 'mushroom']);
+function propMaterial(type) {
+  const w = WIND[type];
+  if (!w) return vcMat;
+  const key = w.join(',');
+  windMats[key] ??= windMaterial(w[0], w[1], w[2], key);
+  return windMats[key];
+}
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
 const _c = new THREE.Color();
 const _up = new THREE.Vector3(0, 1, 0);
 
 // parts: [{ g: geometry, c: hex, p: [x,y,z], r: [rx,ry,rz], s: [sx,sy,sz] }]
-export function mergeParts(parts) {
+export function mergeParts(parts, opts = {}) {
   let count = 0;
   const geos = parts.map((pt) => {
     let g = pt.g.index ? pt.g.toNonIndexed() : pt.g.clone();
@@ -25,11 +42,13 @@ export function mergeParts(parts) {
     _m.compose(_p, _q, _s);
     g.applyMatrix4(_m);
     count += g.attributes.position.count;
-    return { g, c: pt.c };
+    return { g, c: pt.c, sid: opts.surfaces ? surfaceFor(pt) : 0 };
   });
   const pos = new Float32Array(count * 3), nor = new Float32Array(count * 3), col = new Float32Array(count * 3);
+  const sids = opts.surfaces ? new Float32Array(count) : null;
   let o = 0;
-  for (const { g, c } of geos) {
+  for (const { g, c, sid } of geos) {
+    if (sids) sids.fill(sid, o, o + g.attributes.position.count);
     _c.setHex(c);
     const pa = g.attributes.position.array, na = g.attributes.normal.array;
     pos.set(pa, o * 3); nor.set(na, o * 3);
@@ -43,6 +62,7 @@ export function mergeParts(parts) {
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  if (sids) out.setAttribute('surfId', new THREE.BufferAttribute(sids, 1));
   out.computeBoundingSphere();
   return out;
 }
@@ -70,6 +90,7 @@ function prism() {
   return g;
 }
 const PRISM = prism();
+PRISM.userData.prism = true;
 
 // ---------- prop designs ----------
 const PROPS = {
@@ -192,7 +213,9 @@ function flushInstances(scene) {
     const geo = propGeo(type);
     for (const ck in pending[type]) {
       const list = pending[type][ck];
-      const im = new THREE.InstancedMesh(geo, vcMat, list.length);
+      const im = new THREE.InstancedMesh(geo, propMaterial(type), list.length);
+      im.castShadow = CASTS.has(type);
+      im.receiveShadow = true;
       list.forEach((it, i) => {
         e.set(0, it.rot, 0); q.setFromEuler(e);
         s.setScalar(it.scale); p.set(it.x, it.y, it.z);
@@ -267,7 +290,9 @@ export function buildScenery(scene) {
         const ox = lx + (R() - 0.5) * 0.4;
         const x = f.x + ox * c + lz * s;
         const z = f.z - ox * s + lz * c;
-        addInstance(type, x, z, R() * 6.28, 0.85 + R() * 0.35, 0.9 + R() * 0.2, 0.05);
+        const tint = 0.9 + R() * 0.2, rot = R() * 6.28, sc = 0.85 + R() * 0.35;
+        if (heightAt(x, z) < WATER_LEVEL + 0.35) continue;
+        addInstance(type, x, z, rot, sc, tint, 0.05);
       }
     }
     // fence around the field, with a gap on the south side
@@ -302,10 +327,12 @@ function fence(x1, z1, x2, z2, color = 0x8a6a44) {
   for (let i = 0; i <= n; i++) {
     const x = x1 + ((x2 - x1) * i) / n, z = z1 + ((z2 - z1) * i) / n;
     const y = heightAt(x, z);
+    if (y < WATER_LEVEL + 0.2) continue;
     fenceParts.push({ g: B(0.18, 1.3, 0.18), c: color, p: [x, y + 0.6, z] });
     if (i < n) {
       const nx = x1 + ((x2 - x1) * (i + 1)) / n, nz = z1 + ((z2 - z1) * (i + 1)) / n;
       const ny = heightAt(nx, nz);
+      if (ny < WATER_LEVEL + 0.2) continue;
       const mx = (x + nx) / 2, mz = (z + nz) / 2, my = (y + ny) / 2;
       const seg = Math.hypot(nx - x, nz - z);
       const tilt = Math.atan2(ny - y, seg);
@@ -608,6 +635,7 @@ function buildStructures(scene) {
       const blades = new THREE.Group();
       for (let i = 0; i < 4; i++) {
         const bl = new THREE.Mesh(new THREE.BoxGeometry(0.9, 6.5, 0.1), new THREE.MeshLambertMaterial({ color: 0xe8e0d0 }));
+        bl.castShadow = true;
         bl.position.y = 3.3;
         const arm = new THREE.Group();
         arm.rotation.z = (i / 4) * Math.PI * 2;
@@ -630,13 +658,10 @@ function buildStructures(scene) {
     if (!batches.has(k)) batches.set(k, []);
     batches.get(k).push(pt);
   }
-  for (const list of batches.values()) {
-    const geo = mergeParts(list);
-    group.add(new THREE.Mesh(geo, vcMat));
-  }
-  if (fenceParts.length) {
-    for (let i = 0; i < fenceParts.length; i += 1200) group.add(new THREE.Mesh(mergeParts(fenceParts.slice(i, i + 1200)), vcMat));
-  }
+  structMat ??= structureMaterial();
+  const add = (geo) => { const m = new THREE.Mesh(geo, structMat); m.castShadow = m.receiveShadow = true; group.add(m); };
+  for (const list of batches.values()) add(mergeParts(list, { surfaces: true }));
+  for (let i = 0; i < fenceParts.length; i += 1200) add(mergeParts(fenceParts.slice(i, i + 1200).map((f) => ({ ...f, surf: 1 })), { surfaces: true }));
   scene.add(group);
   return group;
 }
@@ -685,8 +710,10 @@ function buildDungeon(scene) {
   // throne dais
   parts.push({ g: B(12, 0.8, 6), c: 0x2a2232, p: [1205, 0.4, 132] });
   parts.push({ g: B(3, 4, 1), c: 0x4a2a5a, p: [1205, 2.4, 134] });
-  const geo = mergeParts(parts);
-  const m = new THREE.Mesh(geo, vcMat);
+  const geo = mergeParts(parts.map((pt) => ({ ...pt, surf: pt.surf ?? 2 })), { surfaces: true });
+  structMat ??= structureMaterial();
+  const m = new THREE.Mesh(geo, structMat);
+  m.castShadow = m.receiveShadow = true;
   m.name = 'dungeon';
   scene.add(m);
   return m;

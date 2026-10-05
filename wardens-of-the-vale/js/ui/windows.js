@@ -1,5 +1,6 @@
 // All dialog windows, the item cursor and context menus.
 import { G, emit, on } from '../state.js';
+import { applyQuality } from '../engine/scene.js';
 import { icon, itemIcon } from './icons.js';
 import { itemTooltip, spellTooltip, trainerTooltip, bindTooltip, showTooltip, hideTooltip } from './tooltip.js';
 import { classIcon, chat } from './hud.js';
@@ -631,13 +632,15 @@ function renderMenu() {
     <div class="setting"><label><input type="checkbox" id="setAutoLoot" ${s.autoLoot ? 'checked' : ''}> Auto loot</label></div>
     <div class="setting"><label><input type="checkbox" id="setSound" ${s.sound ? 'checked' : ''}> Sound effects</label></div>
     <div class="setting"><label for="setScale">Interface scale</label><input type="range" id="setScale" min="0.6" max="1.3" step="0.05" value="${s.uiScale ?? ''}"></div>
+    <div class="setting"><span>Graphics</span> <span class="seg">${['low', 'medium', 'high'].map((q) => `<button class="btn small ${G.quality === q ? '' : 'ghosty'}" data-q="${q}">${q.charAt(0).toUpperCase() + q.slice(1)}</button>`).join(' ')}</span></div>
+    <p class="muted" style="margin:2px 0 8px;font-size:13px">High adds bloom, longer shadows and denser grass. Low turns shadows off for older phones. The resolution also adapts automatically when frames slow down.</p>
     <h4>Controls</h4>
     <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move and turn, <kbd>Q</kbd>/<kbd>E</kbd> strafe, <kbd>Space</kbd> jump, <kbd>R</kbd> autorun, <kbd>X</kbd> sit.<br>
     Hold the left mouse button to look around; hold the right mouse button to steer. Both buttons run forward. Scroll to zoom.<br>
     Left-click to target, right-click to attack, talk, or loot. <kbd>Tab</kbd> cycles enemies, <kbd>F</kbd> interacts with your target or whatever is nearby.<br>
     <kbd>1</kbd>–<kbd>=</kbd> action bar, <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>=</kbd> second bar.<br>
     <kbd>C</kbd> character, <kbd>B</kbd> bags, <kbd>P</kbd> spellbook, <kbd>N</kbd> talents, <kbd>L</kbd> quest log, <kbd>M</kbd> map, <kbd>Esc</kbd> menu.</p>
-    <p>On a touch screen: drag on the left half to move, drag on the right to turn the camera, pinch to zoom. Tap a creature to target it, tap again to attack or talk. Hold an action button to rearrange it.</p>
+    <p>On a touch screen: drag on the left side to move or tap the ground to walk there; drag on the right to turn the camera, pinch to zoom. Tap a creature to target it. The big round button attacks, talks, loots or uses whatever is in front of you and walks you over if it is out of reach. Abilities sit in the arc around it; Page shows the next set. Hold an ability to move or clear it. Abilities with no target pick the nearest enemy.</p>
     <h4>Tips</h4>
     <p>Eat and drink out of combat to recover. Mana only regenerates after 5 seconds without spending it. Speak to an innkeeper to set your Hearthstone and to earn rested experience. Visit your class trainer every couple of levels. Talents unlock at level 10.</p>
   </div>`;
@@ -645,6 +648,7 @@ function renderMenu() {
   $('setAutoLoot').addEventListener('change', (e) => { s.autoLoot = e.target.checked; });
   $('setSound').addEventListener('change', (e) => { s.sound = e.target.checked; });
   $('setScale').addEventListener('input', (e) => { s.uiScale = +e.target.value; document.documentElement.style.setProperty('--ui', s.uiScale); });
+  w.b.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => { applyQuality(b.dataset.q); renderMenu(); }));
   foot(w, [['Save & Log Out', () => { closeAll(); G.ui.logout(); }, 'ghosty'], ['Return to Game', () => closeWin('menu')]]);
 }
 

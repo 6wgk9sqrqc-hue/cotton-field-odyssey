@@ -1,9 +1,9 @@
 // Builds character models from class defaults, chosen looks and equipped gear.
-import { humanoid, quadruped, spider, insect, crab, croc, bird, elemental, totemModel } from './models.js';
+import { humanoid, quadruped, spider, insect, crab, croc, bird, elemental, totemModel, bakeModel } from './models.js';
 import { CLASSES, SKIN_TONES, HAIR_COLORS } from '../data/classes.js';
 import { getItem } from '../data/items.js';
 
-export function buildModel(spec) {
+function rawModel(spec) {
   switch (spec.t) {
     case 'human': return humanoid(spec);
     case 'quad': return quadruped(spec);
@@ -16,6 +16,9 @@ export function buildModel(spec) {
     case 'totem': return totemModel(spec.color, spec.top);
     default: return humanoid(spec);
   }
+}
+export function buildModel(spec) {
+  return bakeModel(rawModel(spec), JSON.stringify(spec));
 }
 
 const HELM_TYPES = { cloth: 'hood', leather: 'cap', mail: 'plate' };

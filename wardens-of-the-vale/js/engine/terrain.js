@@ -5,6 +5,8 @@ import * as THREE from '../lib/three.module.min.js';
 import { fbm, ridged, smoothstep, lerp, clamp, distToSegment, rng } from '../util.js';
 import { ZONES, OVERWORLD_ZONES, WORLD_HALF, ROADS, LAKES, LAVA, TOWNS, FIELDS, WATER_LEVEL } from '../data/world.js';
 import { inDungeon } from './collision.js';
+import { terrainMaterial, preset } from './gfx.js';
+import { waterMaterial, lavaMaterial } from './envshaders.js';
 
 const STEP = 4;
 const N = Math.floor((WORLD_HALF * 2) / STEP) + 1;
@@ -175,6 +177,15 @@ export function inTown(x, z, pad = 0) {
 // ---------- rendering ----------
 const tmpC = new THREE.Color();
 const tmpC2 = new THREE.Color();
+// Surface weights (grass, dirt, rock, sand) for the terrain detail shader.
+const SW = [1, 0, 0, 0];
+const ZONE_SURF = { cottonvale: [1, 0, 0, 0], whisperwood: [0.8, 0.2, 0, 0], saltmarsh: [0.55, 0.45, 0, 0], ashen: [0, 0.55, 0.45, 0] };
+function surfTo(target, t) {
+  if (t <= 0) return;
+  t = Math.min(1, t);
+  for (let i = 0; i < 4; i++) SW[i] += (target[i] - SW[i]) * t;
+}
+const ROCK = [0, 0, 1, 0], DIRT = [0, 1, 0, 0], SAND = [0, 0, 0, 1], BED = [0, 0.6, 0.4, 0];
 function zoneColor(x, z, h, slope, rd) {
   const d = zoneDistances(x, z);
   let d1 = Math.min(...d);
@@ -192,37 +203,51 @@ function zoneColor(x, z, h, slope, rd) {
   col.multiplyScalar(1 / wsum);
   const zi = d.indexOf(d1);
   const zone = ZLIST[zi];
+  SW[0] = SW[1] = SW[2] = SW[3] = 0;
+  let sw = 0;
+  for (let i = 0; i < ZLIST.length; i++) {
+    const w = Math.exp(-(d[i] - d1) / 14);
+    if (w < 0.01) continue;
+    const zs = ZONE_SURF[ZLIST[i].id];
+    for (let k = 0; k < 4; k++) SW[k] += zs[k] * w;
+    sw += w;
+  }
+  for (let k = 0; k < 4; k++) SW[k] /= sw;
   // rock on steep slopes and high ridges
   const rockT = clamp((slope - 0.55) * 1.6, 0, 1) + clamp((h - (zone.id === 'ashen' ? 60 : 30)) / 30, 0, 1);
-  if (rockT > 0) col.lerp(tmpC.setHex(zone.rock), clamp(rockT, 0, 1));
+  if (rockT > 0) { col.lerp(tmpC.setHex(zone.rock), clamp(rockT, 0, 1)); surfTo(ROCK, rockT); }
   // roads
   const rm = 1 - smoothstep(4, 8.5, rd);
   if (rm > 0) {
     const roadHex = zone.id === 'ashen' ? 0x7d6a5c : zone.id === 'saltmarsh' ? 0x7a6a48 : 0xa38660;
     col.lerp(tmpC.setHex(roadHex), rm * 0.9);
+    surfTo(DIRT, rm * 0.95);
   }
   // shores, beaches and lake beds
   if (h < 1.6) {
     const sand = z > 470 ? 0xd8c690 : zone.id === 'saltmarsh' ? 0x5a5236 : 0xb3a173;
     col.lerp(tmpC.setHex(sand), clamp((1.6 - h) / 1.6, 0, 1) * 0.85);
+    surfTo(zone.id === 'saltmarsh' && z <= 470 ? DIRT : SAND, clamp((1.6 - h) / 1.6, 0, 1));
   }
-  if (h < -1.5) col.lerp(tmpC.setHex(0x3c4a40), clamp((-1.5 - h) / 5, 0, 0.7));
+  if (h < -1.5) { col.lerp(tmpC.setHex(0x3c4a40), clamp((-1.5 - h) / 5, 0, 0.7)); surfTo(BED, clamp((-1.5 - h) / 4, 0, 1)); }
   // fields
   const f = inField(x, z);
   if (f) {
     const soil = f.kind === 'blighted' ? 0x5d5060 : f.kind === 'wheat' ? 0x9b8a4a : 0x6e5434;
     col.lerp(tmpC.setHex(soil), 0.75);
+    surfTo(DIRT, 0.85);
   }
   // town ground
   const t = inTown(x, z);
   if (t) {
     const dd = Math.hypot(x - t.x, z - t.z) / t.r;
     col.lerp(tmpC.setHex(zone.id === 'ashen' ? 0x6d6560 : 0x9a8a68), (1 - dd) * 0.45);
+    surfTo(DIRT, (1 - dd) * 0.6);
   }
   // lava rims glow
   for (const l of lavaPools) {
     const dd = Math.hypot(x - l.x, z - l.z);
-    if (dd < l.r * 1.6) col.lerp(tmpC.setHex(0x3a2420), (1 - smoothstep(l.r * 0.8, l.r * 1.6, dd)) * 0.8);
+    if (dd < l.r * 1.6) { const t = (1 - smoothstep(l.r * 0.8, l.r * 1.6, dd)) * 0.8; col.lerp(tmpC.setHex(0x3a2420), t); surfTo(ROCK, t); }
   }
   return col;
 }
@@ -230,7 +255,8 @@ function zoneColor(x, z, h, slope, rd) {
 export function buildTerrain(scene) {
   const CH = 35; // cells per chunk
   const chunks = Math.ceil((N - 1) / CH);
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const mat = terrainMaterial();
+  const castTerrain = preset().terrainShadows;
   const group = new THREE.Group();
   group.name = 'terrain';
   for (let cj = 0; cj < chunks; cj++) {
@@ -238,7 +264,7 @@ export function buildTerrain(scene) {
       const i0 = ci * CH, j0 = cj * CH;
       const i1 = Math.min(i0 + CH, N - 1), j1 = Math.min(j0 + CH, N - 1);
       const w = i1 - i0 + 1, d = j1 - j0 + 1;
-      const pos = new Float32Array(w * d * 3), nor = new Float32Array(w * d * 3), col = new Float32Array(w * d * 3);
+      const pos = new Float32Array(w * d * 3), nor = new Float32Array(w * d * 3), col = new Float32Array(w * d * 3), surf = new Float32Array(w * d * 4);
       let skipChunk = true;
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
         const k = ((j - j0) * w + (i - i0)) * 3;
@@ -256,6 +282,8 @@ export function buildTerrain(scene) {
         // subtle per-vertex jitter breaks up the grid
         const jit = 0.94 + ((i * 7 + j * 13) % 11) / 90;
         col[k] = c.r * jit; col[k + 1] = c.g * jit; col[k + 2] = c.b * jit;
+        const q = ((j - j0) * w + (i - i0)) * 4;
+        surf[q] = SW[0]; surf[q + 1] = SW[1]; surf[q + 2] = SW[2]; surf[q + 3] = SW[3];
       }
       if (skipChunk) continue;
       const idx = [];
@@ -267,11 +295,14 @@ export function buildTerrain(scene) {
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      geo.setAttribute('surf', new THREE.BufferAttribute(surf, 4));
       geo.setIndex(idx);
       geo.computeBoundingSphere();
       const mesh = new THREE.Mesh(geo, mat);
       mesh.matrixAutoUpdate = false;
       mesh.userData.ground = true;
+      mesh.receiveShadow = true;
+      mesh.castShadow = castTerrain;
       group.add(mesh);
     }
   }
@@ -280,7 +311,7 @@ export function buildTerrain(scene) {
   // water
   const wgeo = new THREE.PlaneGeometry(WORLD_HALF * 2 + 400, WORLD_HALF * 2 + 400, 1, 1);
   wgeo.rotateX(-Math.PI / 2);
-  const wmat = new THREE.MeshLambertMaterial({ color: 0x3a6f8a, transparent: true, opacity: 0.72, depthWrite: false });
+  const wmat = waterMaterial(heightTexture(), { half: WORLD_HALF, step: STEP, n: N });
   const water = new THREE.Mesh(wgeo, wmat);
   water.position.y = WATER_LEVEL - 0.15;
   water.renderOrder = 2;
@@ -288,7 +319,7 @@ export function buildTerrain(scene) {
   scene.add(water);
 
   // lava
-  const lmat = new THREE.MeshBasicMaterial({ color: 0xff5a1a });
+  const lmat = lavaMaterial();
   for (const l of lavaPools) {
     const g = new THREE.CircleGeometry(l.r * 1.15, 24);
     g.rotateX(-Math.PI / 2);
@@ -298,6 +329,17 @@ export function buildTerrain(scene) {
     scene.add(m);
   }
   return { group, water, lavaMat: lmat, waterMat: wmat };
+}
+
+// Terrain heights packed into a byte texture (range -10..6) so the water shader knows its depth.
+function heightTexture() {
+  const data = new Uint8Array(N * N);
+  for (let i = 0; i < N * N; i++) data[i] = Math.round(clamp((heights[i] + 10) / 16, 0, 1) * 255);
+  const t = new THREE.DataTexture(data, N, N, THREE.RedFormat, THREE.UnsignedByteType);
+  t.magFilter = t.minFilter = THREE.LinearFilter;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.needsUpdate = true;
+  return t;
 }
 
 // Precompute a small top-down color image of the world for the minimap and world map.

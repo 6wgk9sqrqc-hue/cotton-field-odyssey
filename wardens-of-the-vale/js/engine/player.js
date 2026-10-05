@@ -181,13 +181,73 @@ function clickPick(x, y, right) {
 let lastTap = { unit: null, t: 0 };
 function tapPick(x, y) {
   const h = pickAt(x, y);
-  if (!h) { setTarget(null); return; }
+  if (!h) { const g = groundAt(x, y); if (g) moveTo(g.x, g.z); return; }
   if (h.isObject) { interactObject(h); return; }
   const now = performance.now();
   const again = G.player.target === h && (now - lastTap.t < 1500 || h.kind === 'npc' || (h.dead && h.loot));
   setTarget(h);
   if (again) interact(h);
   lastTap = { unit: h, t: now };
+}
+
+// Ground point under a screen position, found by marching the camera ray.
+function groundAt(x, y) {
+  ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, G.camera);
+  const o = raycaster.ray.origin, d = raycaster.ray.direction;
+  const dungeon = G.player && inDungeon(G.player.pos.x);
+  let prev = 0;
+  for (let t = 1; t < 160; t += 0.75) {
+    const px = o.x + d.x * t, pz = o.z + d.z * t, py = o.y + d.y * t;
+    const gy = dungeon ? 0 : heightAt(px, pz);
+    if (py <= gy) {
+      // refine between the last two steps
+      const tt = (prev + t) / 2;
+      return { x: o.x + d.x * tt, z: o.z + d.z * tt };
+    }
+    prev = t;
+  }
+  return null;
+}
+
+// Walk to a unit, object or spot, then run a callback (talk, loot, attack).
+// Any manual movement cancels it.
+let marker = null;
+export function approach(target, range, then) {
+  const p = G.player;
+  if (!p || p.dead) return;
+  p.approach = { target, range, then, t0: G.time };
+}
+export function moveTo(x, z) {
+  const p = G.player;
+  if (!p || p.dead || p.flight) return;
+  p.approach = { x, z, range: 0.7, t0: G.time };
+  if (!marker) {
+    marker = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.55, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe080, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }));
+    marker.renderOrder = 3;
+    G.scene.add(marker);
+  }
+  marker.position.set(x, (inDungeon(x) ? 0 : heightAt(x, z)) + 0.08, z);
+  marker.visible = true;
+  marker.userData.t = 0;
+}
+function approachDone(p, a) {
+  const t = a.target;
+  if (!t) return Math.hypot(a.x - p.pos.x, a.z - p.pos.z) <= a.range;
+  if (a.range === 'melee') return inMeleeRange(p, t);
+  const tx = t.pos ? t.pos.x : t.x, tz = t.pos ? t.pos.z : t.z;
+  return Math.hypot(tx - p.pos.x, tz - p.pos.z) - (t.radius ?? 0.5) <= a.range;
+}
+function approachGone(p, a) {
+  const t = a.target;
+  if (G.time - a.t0 > 20) return true;
+  if (!t) return false;
+  if (t.pos) {
+    if (!G.units.includes(t)) return true;
+    if (a.range === 'melee' && (t.dead || !canAttack(p, t))) return true;
+    return distance(p, t) > 80;
+  }
+  return Math.hypot(t.x - p.pos.x, t.z - p.pos.z) > 80;
 }
 
 export function setTarget(u) {
@@ -206,7 +266,16 @@ export function interact(u) {
   if (!u || !p || p.dead || p.flying) return;
   if (u.dead && u.kind === 'mob') {
     if (!u.loot || lootEmpty(u)) return;
-    if (distance(p, u) > 6) { emit('error', 'You are too far away.'); return; }
+    if (distance(p, u) > 6) {
+      if (G.isTouch) approach(u, 3.5, () => interact(u));
+      else emit('error', 'You are too far away.');
+      return;
+    }
+    if (G.isTouch || G.settings?.autoLoot) {
+      takeAll(u);
+      if (u.loot && !lootEmpty(u)) emit('openLoot', { unit: u });
+      return;
+    }
     emit('openLoot', { unit: u });
     return;
   }
@@ -218,14 +287,18 @@ export function interact(u) {
     } else {
       p.autoAttack = true;
       p.autoShot = false;
-      if (u.threat && !u.threat.has(p) && inMeleeRange(p, u)) { /* engaged on first swing */ }
+      if (G.isTouch && !inMeleeRange(p, u)) approach(u, 'melee');
     }
     if (p.pet && p.pet.mode !== 'passive') { p.pet.target = u; p.pet.order = 'attack'; }
     return;
   }
   if (u.kind === 'npc' && !u.guard) {
     if (u.spiritHealer && !p.ghost) return;
-    if (distance(p, u) > 6) { emit('error', 'You are too far away.'); return; }
+    if (distance(p, u) > 6) {
+      if (G.isTouch) approach(u, 3.5, () => interact(u));
+      else emit('error', 'You are too far away.');
+      return;
+    }
     if (u.npc?.gossip && u.name === 'Grateful Woodcutter') return;
     emit('openGossip', { unit: u });
     return;
@@ -237,7 +310,11 @@ export function interact(u) {
 export function interactObject(o) {
   const p = G.player;
   if (!objectUsable(o) || p.dead) return;
-  if (Math.hypot(o.x - p.pos.x, o.z - p.pos.z) > 6) { emit('error', 'You are too far away.'); return; }
+  if (Math.hypot(o.x - p.pos.x, o.z - p.pos.z) > 6) {
+    if (G.isTouch) approach(o, 3, () => interactObject(o));
+    else emit('error', 'You are too far away.');
+    return;
+  }
   if (o.def.portal) { useObject(o); return; }
   if (p.inCombat) { emit('error', "You can't do that while in combat."); return; }
   p.cast = {
@@ -354,6 +431,25 @@ export function updatePlayer(dt) {
     p.facing = turnToward(p.facing, a, dt * 10);
     speedMul = mag < 0.55 ? 0.45 : 1;
   }
+  const manual = fwd || strafe || turn || (input.joy.active && Math.hypot(input.joy.x, input.joy.y) > 0.15);
+  if (manual && p.approach) p.approach = null;
+  if (!manual && p.approach) {
+    const a = p.approach;
+    if (approachGone(p, a)) p.approach = null;
+    else if (approachDone(p, a)) {
+      p.approach = null;
+      if (a.target?.pos && a.target !== p) p.faceTowards?.(a.target);
+      a.then?.();
+    } else if (!p.cast || p.cast.ability?.castWhileMoving) {
+      const tx = a.target ? (a.target.pos ? a.target.pos.x : a.target.x) : a.x;
+      const tz = a.target ? (a.target.pos ? a.target.pos.z : a.target.z) : a.z;
+      const ang = Math.atan2(tx - p.pos.x, tz - p.pos.z);
+      mx = Math.sin(ang); mz = Math.cos(ang);
+      p.facing = turnToward(p.facing, ang, dt * 10);
+      speedMul = 1;
+    }
+  }
+  if (marker?.visible && (!p.approach || p.approach.target)) marker.visible = false;
   const rooted = p.hasFlag('root') || (p.cast && !p.ghost && p.cast.ability?.id === 'opening' && false);
   if ((mx || mz) && !rooted) {
     if (p.sitting) { p.sitting = false; }
@@ -366,7 +462,8 @@ export function updatePlayer(dt) {
     p.moving = sp;
     if (!cam.dragging && cam.follow && !input.mouse.l) {
       const behind = p.facing + Math.PI;
-      if (!input.joy.active) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 2.5);
+      if (p.approach) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 1.2);
+      else if (!input.joy.active) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 2.5);
       else if (fwd === 0) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 0.8);
     }
   } else p.moving = 0;
@@ -412,5 +509,5 @@ export function updateCamera(dt) {
   if (p.model) p.model.root.visible = d > 1.3;
 }
 
-export function clearInput() { input.keys.clear(); input.joy.active = false; input.joy.x = input.joy.y = 0; input.autorun = false; }
+export function clearInput() { input.keys.clear(); input.joy.active = false; input.joy.x = input.joy.y = 0; input.autorun = false; if (G.player) G.player.approach = null; }
 void heightAt; void friendly; void ABILITIES; void knownRank; void takeAll;
