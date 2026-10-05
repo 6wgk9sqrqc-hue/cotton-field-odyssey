@@ -391,7 +391,8 @@ export class Unit {
   moveBy(dx, dz) {
     if (!dx && !dz) return false;
     const nx = this.pos.x + dx, nz = this.pos.z + dz;
-    const r = resolve(nx, nz, this.radius * 0.8);
+    const above = this.airborne ? this.y - this.groundAt(this.pos.x, this.pos.z) : 0;
+    const r = resolve(nx, nz, this.radius * 0.8, above);
     if (inDungeon(r.x) || inDungeon(this.pos.x)) {
       if (!dungeonWalkable(r.x, r.z, this.radius * 0.8)) {
         // slide along one axis
@@ -419,7 +420,8 @@ export class Unit {
       this.y += (-1.3 - this.y) * Math.min(1, dt * 6);
       this.vy = 0; this.airborne = false;
     } else if (this.airborne || this.y > ground + 0.6) {
-      this.vy -= 22 * dt;
+      // a jump rises and lands quickly; ordinary falls use normal gravity
+      this.vy -= (this.jumping && this.vy > -10 ? 31 : 22) * dt;
       this.y += this.vy * dt;
       if (this.y <= ground) {
         // falling damage past roughly eight yards, lethal around thirty
@@ -427,7 +429,7 @@ export class Unit {
           const dmg = Math.round(this.maxHp * Math.min(1.1, ((-this.vy - 19) / 17) ** 1.4));
           if (dmg > 0) dealDamage(null, this, dmg, { school: 'physical', ignoreArmor: true, abilityName: 'Falling', noThreat: true });
         }
-        this.y = ground; this.vy = 0; this.airborne = false;
+        this.y = ground; this.vy = 0; this.airborne = false; this.jumping = false;
       } else this.airborne = true;
     } else {
       this.y = ground;

@@ -17,11 +17,13 @@ const slots = [];
 let mainKind = '';
 let built = false;
 
-// cluster geometry, in CSS pixels inside a 250px box anchored bottom-right
-const BOX = 250, CX = BOX - 50, CY = BOX - 50;
+// Cluster geometry in CSS pixels, inside a box anchored bottom-right. The
+// jump button sits in the corner like Roblox's; Attack is just left of it and
+// the abilities fan out in two arcs.
+const BOX_W = 330, BOX_H = 256, CX = BOX_W - 56, CY = BOX_H - 52;
 const polar = (r, deg) => [CX + Math.cos((deg * Math.PI) / 180) * r, CY - Math.sin((deg * Math.PI) / 180) * r];
-const SLOT_POS = [polar(100, 180), polar(100, 148), polar(100, 116), polar(100, 84), polar(168, 178), polar(168, 155)];
-const UTIL_POS = { thTarget: polar(168, 132), thJump: polar(168, 109), thPage: polar(168, 86) };
+const SLOT_POS = [polar(102, 135), polar(102, 90), polar(178, 180), polar(178, 155), polar(178, 130), polar(178, 105)];
+const UTIL_POS = { thTarget: polar(178, 80), thPage: polar(250, 170) };
 
 function place(el, [x, y], size) {
   el.style.left = (x - size / 2) + 'px';
@@ -44,10 +46,10 @@ export function initTouchHud() {
   root.innerHTML = `
     <div id="joyHint"><div></div></div>
     <div id="thCluster">
+      <button id="thJump" aria-label="Jump"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 7 L33 22 L25 22 L25 33 L15 33 L15 22 L7 22 Z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></button>
       <button id="thMain" aria-label="Attack or interact"><img alt=""><span class="lbl">Attack</span></button>
       ${[0, 1, 2, 3, 4, 5].map((k) => `<div class="th-slot slot" data-k="${k}"><img alt=""><span class="count"></span><div class="cd"></div><div class="cdt"></div></div>`).join('')}
       <button id="thTarget" class="th-util" aria-label="Next target"><img alt=""><small>Target</small></button>
-      <button id="thJump" class="th-util" aria-label="Jump">⤒<small>Jump</small></button>
       <button id="thPage" class="th-util" aria-label="Next ability page"><b>1</b><small>Page</small></button>
     </div>
     <div id="thTop">
@@ -63,11 +65,13 @@ export function initTouchHud() {
       <div class="sheet-foot">${document.fullscreenEnabled ? '<button class="btn small ghosty" id="thFull">Full screen</button>' : ''}<button class="btn small ghosty" id="thSheetClose">Close</button></div>
     </div>`;
   const cluster = $('thCluster');
-  cluster.style.width = cluster.style.height = BOX + 'px';
-  place($('thMain'), [CX, CY], 84);
+  cluster.style.width = BOX_W + 'px';
+  cluster.style.height = BOX_H + 'px';
+  place($('thJump'), [CX, CY], 84);
+  place($('thMain'), polar(104, 180), 72);
   cluster.querySelectorAll('.th-slot').forEach((el) => {
     const k = +el.dataset.k;
-    place(el, SLOT_POS[k], 58);
+    place(el, SLOT_POS[k], 56);
     slots[k] = { el, img: el.querySelector('img'), count: el.querySelector('.count'), cd: el.querySelector('.cd'), cdt: el.querySelector('.cdt'), entry: undefined };
     bindSlot(el, k);
   });
@@ -78,7 +82,15 @@ export function initTouchHud() {
 
   press($('thMain'), () => { if (G.player) mainAction(G.player)[1]?.(); });
   press($('thTarget'), () => cycleTarget());
-  press($('thJump'), () => { input.jump = true; });
+  // jump fires on touch down and keeps hopping while held, like Roblox
+  const jb = $('thJump');
+  const jumpOff = () => { input.jumpHeld = false; jb.classList.remove('down'); };
+  jb.addEventListener('touchstart', (e) => { input.jump = true; input.jumpHeld = true; jb.classList.add('down'); e.preventDefault(); }, { passive: false });
+  jb.addEventListener('touchend', (e) => { jumpOff(); e.preventDefault(); }, { passive: false });
+  jb.addEventListener('touchcancel', jumpOff);
+  jb.addEventListener('mousedown', () => { input.jump = true; input.jumpHeld = true; });
+  jb.addEventListener('mouseup', jumpOff);
+  jb.addEventListener('mouseleave', jumpOff);
   press($('thPage'), () => setPage((page + 1) % PAGES));
   press($('thQuests'), () => G.ui.toggle('quests'));
   press($('thBags'), () => G.ui.toggle('bags'));

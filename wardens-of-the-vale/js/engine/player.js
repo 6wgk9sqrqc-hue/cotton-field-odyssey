@@ -9,8 +9,8 @@ import { castAbility, ABILITIES, knownRank } from './spells.js';
 import { updateDash } from './summons.js';
 import { takeAll, lootEmpty, objectUsable, useObject } from './world.js';
 
-export const cam = { yaw: Math.PI, pitch: 0.32, dist: 11, want: 11, dragging: false, follow: true };
-export const input = { keys: new Set(), mouse: { l: false, r: false, x: 0, y: 0, downX: 0, downY: 0, moved: 0 }, joy: { x: 0, y: 0, active: false }, autorun: false, mouseTurn: false };
+export const cam = { yaw: Math.PI, pitch: 0.3, dist: 9, want: 9, dragging: false, follow: true };
+export const input = { keys: new Set(), mouse: { l: false, r: false, x: 0, y: 0, downX: 0, downY: 0, moved: 0 }, joy: { x: 0, y: 0, active: false }, jump: false, jumpHeld: false };
 
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
@@ -30,11 +30,13 @@ export function initInput(cv) {
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
   cv.addEventListener('mousedown', (e) => {
     const m = input.mouse;
+    if (e.button === 0 && inStickZone(e.clientX, e.clientY)) { startStick(e.clientX, e.clientY, 'mouse'); return; }
     if (e.button === 0) m.l = true;
     if (e.button === 2) m.r = true;
     m.x = m.downX = e.clientX; m.y = m.downY = e.clientY; m.moved = 0;
   });
   window.addEventListener('mousemove', (e) => {
+    if (input.joy.id === 'mouse') { moveStick(e.clientX, e.clientY); return; }
     const m = input.mouse;
     const dx = e.clientX - m.x, dy = e.clientY - m.y;
     m.x = e.clientX; m.y = e.clientY;
@@ -49,6 +51,7 @@ export function initInput(cv) {
     hoverPick(e.clientX, e.clientY);
   });
   window.addEventListener('mouseup', (e) => {
+    if (input.joy.id === 'mouse') { endStick(); return; }
     const m = input.mouse;
     const click = m.moved <= 4;
     if (e.button === 0) { m.l = false; if (click && e.target === canvas) clickPick(e.clientX, e.clientY, false); }
@@ -59,22 +62,39 @@ export function initInput(cv) {
   initTouch(cv);
 }
 
-// ---------- touch: left joystick, right-side camera drag, tap to target ----------
+// ---------- touch: floating thumbstick on the left, camera drag elsewhere ----------
 const touches = new Map();
 let pinch = null;
+let joyEl, knob;
+const inStickZone = (x, y) => x < window.innerWidth * 0.42 && y > window.innerHeight * 0.3;
+function startStick(x, y, id) {
+  input.joy.active = true;
+  input.joy.id = id;
+  input.joy.cx = x; input.joy.cy = y;
+  input.joy.x = input.joy.y = 0;
+  if (joyEl) { joyEl.style.left = x + 'px'; joyEl.style.top = y + 'px'; joyEl.classList.add('on'); }
+}
+function moveStick(x, y) {
+  let dx = x - input.joy.cx, dy = y - input.joy.cy;
+  const len = Math.hypot(dx, dy), max = 56;
+  if (len > max) { dx = dx / len * max; dy = dy / len * max; }
+  input.joy.x = dx / max; input.joy.y = dy / max;
+  if (knob) knob.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+function endStick() {
+  input.joy.active = false; input.joy.id = null; input.joy.x = input.joy.y = 0;
+  if (knob) knob.style.transform = '';
+  if (joyEl) joyEl.classList.remove('on');
+}
 function initTouch(cv) {
-  const joyEl = document.getElementById('joystick');
-  const knob = document.getElementById('joyKnob');
+  joyEl = document.getElementById('joystick');
+  knob = document.getElementById('joyKnob');
   cv.addEventListener('touchstart', (e) => {
     G.isTouch = true;
     document.body.classList.add('touch');
     for (const t of e.changedTouches) {
-      const leftSide = t.clientX < window.innerWidth * 0.42 && t.clientY > window.innerHeight * 0.35;
-      if (leftSide && !input.joy.active) {
-        input.joy.active = true;
-        input.joy.id = t.identifier;
-        input.joy.cx = t.clientX; input.joy.cy = t.clientY;
-        if (joyEl) { joyEl.style.left = t.clientX + 'px'; joyEl.style.top = t.clientY + 'px'; joyEl.classList.add('on'); }
+      if (inStickZone(t.clientX, t.clientY) && !input.joy.active) {
+        startStick(t.clientX, t.clientY, t.identifier);
         touches.set(t.identifier, { kind: 'joy' });
       } else {
         touches.set(t.identifier, { kind: 'cam', x: t.clientX, y: t.clientY, sx: t.clientX, sy: t.clientY, moved: 0, t0: performance.now() });
@@ -89,11 +109,7 @@ function initTouch(cv) {
       const tr = touches.get(t.identifier);
       if (!tr) continue;
       if (tr.kind === 'joy') {
-        let dx = t.clientX - input.joy.cx, dy = t.clientY - input.joy.cy;
-        const len = Math.hypot(dx, dy), max = 55;
-        if (len > max) { dx = dx / len * max; dy = dy / len * max; }
-        input.joy.x = dx / max; input.joy.y = dy / max;
-        if (knob) knob.style.transform = `translate(${dx}px, ${dy}px)`;
+        moveStick(t.clientX, t.clientY);
       } else {
         const dx = t.clientX - tr.x, dy = t.clientY - tr.y;
         tr.x = t.clientX; tr.y = t.clientY;
@@ -116,9 +132,7 @@ function initTouch(cv) {
       const tr = touches.get(t.identifier);
       if (!tr) continue;
       if (tr.kind === 'joy') {
-        input.joy.active = false; input.joy.x = input.joy.y = 0;
-        if (knob) knob.style.transform = '';
-        if (joyEl) joyEl.classList.remove('on');
+        endStick();
       } else if (tr.moved < 10 && performance.now() - tr.t0 < 400) {
         tapPick(t.clientX, t.clientY);
       }
@@ -181,7 +195,7 @@ function clickPick(x, y, right) {
 let lastTap = { unit: null, t: 0 };
 function tapPick(x, y) {
   const h = pickAt(x, y);
-  if (!h) { const g = groundAt(x, y); if (g) moveTo(g.x, g.z); return; }
+  if (!h) return;
   if (h.isObject) { interactObject(h); return; }
   const now = performance.now();
   const again = G.player.target === h && (now - lastTap.t < 1500 || h.kind === 'npc' || (h.dead && h.loot));
@@ -190,50 +204,15 @@ function tapPick(x, y) {
   lastTap = { unit: h, t: now };
 }
 
-// Ground point under a screen position, found by marching the camera ray.
-function groundAt(x, y) {
-  ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
-  raycaster.setFromCamera(ndc, G.camera);
-  const o = raycaster.ray.origin, d = raycaster.ray.direction;
-  const dungeon = G.player && inDungeon(G.player.pos.x);
-  let prev = 0;
-  for (let t = 1; t < 160; t += 0.75) {
-    const px = o.x + d.x * t, pz = o.z + d.z * t, py = o.y + d.y * t;
-    const gy = dungeon ? 0 : heightAt(px, pz);
-    if (py <= gy) {
-      // refine between the last two steps
-      const tt = (prev + t) / 2;
-      return { x: o.x + d.x * tt, z: o.z + d.z * tt };
-    }
-    prev = t;
-  }
-  return null;
-}
-
-// Walk to a unit, object or spot, then run a callback (talk, loot, attack).
+// Walk to a unit or object, then run a callback (talk, loot, attack).
 // Any manual movement cancels it.
-let marker = null;
 export function approach(target, range, then) {
   const p = G.player;
   if (!p || p.dead) return;
   p.approach = { target, range, then, t0: G.time };
 }
-export function moveTo(x, z) {
-  const p = G.player;
-  if (!p || p.dead || p.flight) return;
-  p.approach = { x, z, range: 0.7, t0: G.time };
-  if (!marker) {
-    marker = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.55, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe080, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }));
-    marker.renderOrder = 3;
-    G.scene.add(marker);
-  }
-  marker.position.set(x, (inDungeon(x) ? 0 : heightAt(x, z)) + 0.08, z);
-  marker.visible = true;
-  marker.userData.t = 0;
-}
 function approachDone(p, a) {
   const t = a.target;
-  if (!t) return Math.hypot(a.x - p.pos.x, a.z - p.pos.z) <= a.range;
   if (a.range === 'melee') return inMeleeRange(p, t);
   const tx = t.pos ? t.pos.x : t.x, tz = t.pos ? t.pos.z : t.z;
   return Math.hypot(tx - p.pos.x, tz - p.pos.z) - (t.radius ?? 0.5) <= a.range;
@@ -241,7 +220,6 @@ function approachDone(p, a) {
 function approachGone(p, a) {
   const t = a.target;
   if (G.time - a.t0 > 20) return true;
-  if (!t) return false;
   if (t.pos) {
     if (!G.units.includes(t)) return true;
     if (a.range === 'melee' && (t.dead || !canAttack(p, t))) return true;
@@ -358,7 +336,6 @@ function onKeyPress(k, e) {
     case 'f': if (p.target) interact(p.target); else { const n = nearestInteractable(); if (n) n.isObject ? interactObject(n) : (setTarget(n), interact(n)); } break;
     case 't': if (p.target && canAttack(p, p.target)) interact(p.target); break;
     case 'x': if (!p.inCombat) { p.sitting = !p.sitting; } break;
-    case 'r': case 'numlock': input.autorun = !input.autorun; break;
     case 'c': emit('toggleWindow', 'character'); break;
     case 'b': emit('toggleWindow', 'bags'); break;
     case 'p': emit('toggleWindow', 'spellbook'); break;
@@ -388,6 +365,11 @@ export function nearestInteractable() {
 }
 
 // ---------- per-frame movement ----------
+// Movement works like Roblox: the thumbstick (or WASD) pushes the character
+// relative to the camera, the character turns to face where it runs, and the
+// camera stays where the player put it. Jump is a button; holding it keeps
+// jumping, and running into a small obstacle hops over it automatically.
+const JUMP_SPEED = 10;
 export function updatePlayer(dt) {
   const p = G.player;
   if (!p) return;
@@ -397,41 +379,26 @@ export function updatePlayer(dt) {
   if (updateDash(p, dt)) return;
   if (p.hasFlag('fear')) { G.fearMove?.(p, dt); return; }
   if (!p.canAct() && !p.ghost) { p.moving = 0; return; }
-  const both = input.mouse.l && input.mouse.r;
-  let fwd = 0, strafe = 0, turn = 0;
-  if (k.has('w') || k.has('arrowup') || both) fwd += 1;
-  if (k.has('s') || k.has('arrowdown')) fwd -= 1;
-  if (k.has('q')) strafe -= 1;
-  if (k.has('e')) strafe += 1;
-  const mouseSteer = input.mouse.r;
-  if (k.has('a') || k.has('arrowleft')) { if (mouseSteer) strafe -= 1; else turn += 1; }
-  if (k.has('d') || k.has('arrowright')) { if (mouseSteer) strafe += 1; else turn -= 1; }
-  if (input.autorun) fwd = Math.max(fwd, 1);
-  if (fwd < 0 || both) input.autorun = input.autorun && !both && fwd >= 0;
-  if (mouseSteer) p.facing = cam.yaw + Math.PI;
-  if (turn) {
-    p.facing += turn * dt * 3.2;
-    if (!cam.dragging) cam.yaw = p.facing + Math.PI - (normAngle(p.facing + Math.PI - cam.yaw) * Math.exp(-dt * 6));
+  let ix = 0, iz = 0, mag = 0;
+  if (k.has('w') || k.has('arrowup')) iz += 1;
+  if (k.has('s') || k.has('arrowdown')) iz -= 1;
+  if (k.has('a') || k.has('arrowleft') || k.has('q')) ix -= 1;
+  if (k.has('d') || k.has('arrowright') || k.has('e')) ix += 1;
+  if (ix || iz) mag = 1;
+  const jm = Math.hypot(input.joy.x, input.joy.y);
+  if (input.joy.active && jm > 0.12) {
+    ix = input.joy.x; iz = -input.joy.y;
+    // the further the thumb, the faster the walk, like an analog stick
+    mag = clamp((jm - 0.12) / 0.7, 0.3, 1);
   }
   let mx = 0, mz = 0, speedMul = 1;
-  if (fwd || strafe) {
-    const fx = Math.sin(p.facing), fz = Math.cos(p.facing);
-    const sx = Math.sin(p.facing - Math.PI / 2), sz = Math.cos(p.facing - Math.PI / 2);
-    mx = fx * fwd + sx * strafe; mz = fz * fwd + sz * strafe;
-    const l = Math.hypot(mx, mz);
-    mx /= l; mz /= l;
-    if (fwd < 0) speedMul = 0.6;
-  }
-  // touch joystick: move relative to the camera, face the direction of travel
-  if (input.joy.active && Math.hypot(input.joy.x, input.joy.y) > 0.15) {
-    const mag = Math.min(1, Math.hypot(input.joy.x, input.joy.y));
-    const camF = cam.yaw + Math.PI;
-    const a = camF + Math.atan2(input.joy.x, -input.joy.y);
+  if (mag) {
+    const a = cam.yaw + Math.PI + Math.atan2(ix, iz);
     mx = Math.sin(a); mz = Math.cos(a);
-    p.facing = turnToward(p.facing, a, dt * 10);
-    speedMul = mag < 0.55 ? 0.45 : 1;
+    p.facing = turnToward(p.facing, a, dt * 14);
+    speedMul = mag;
   }
-  const manual = fwd || strafe || turn || (input.joy.active && Math.hypot(input.joy.x, input.joy.y) > 0.15);
+  const manual = mag > 0;
   if (manual && p.approach) p.approach = null;
   if (!manual && p.approach) {
     const a = p.approach;
@@ -441,39 +408,42 @@ export function updatePlayer(dt) {
       if (a.target?.pos && a.target !== p) p.faceTowards?.(a.target);
       a.then?.();
     } else if (!p.cast || p.cast.ability?.castWhileMoving) {
-      const tx = a.target ? (a.target.pos ? a.target.pos.x : a.target.x) : a.x;
-      const tz = a.target ? (a.target.pos ? a.target.pos.z : a.target.z) : a.z;
+      const tx = a.target.pos ? a.target.pos.x : a.target.x;
+      const tz = a.target.pos ? a.target.pos.z : a.target.z;
       const ang = Math.atan2(tx - p.pos.x, tz - p.pos.z);
       mx = Math.sin(ang); mz = Math.cos(ang);
-      p.facing = turnToward(p.facing, ang, dt * 10);
+      p.facing = turnToward(p.facing, ang, dt * 14);
       speedMul = 1;
     }
   }
-  if (marker?.visible && (!p.approach || p.approach.target)) marker.visible = false;
-  const rooted = p.hasFlag('root') || (p.cast && !p.ghost && p.cast.ability?.id === 'opening' && false);
+  const rooted = p.hasFlag('root');
+  let wantJump = k.has(' ') || input.jump || input.jumpHeld;
   if ((mx || mz) && !rooted) {
     if (p.sitting) { p.sitting = false; }
     if (p.cast && !p.cast.ability?.castWhileMoving) { p.interruptCast(); }
     const sp = p.speed() * speedMul;
+    const x0 = p.pos.x, z0 = p.pos.z;
     if (!p.moveBy(mx * sp * dt, mz * sp * dt)) {
       // slide along walls and slopes
       if (!p.moveBy(mx * sp * dt, 0)) p.moveBy(0, mz * sp * dt);
     }
     p.moving = sp;
-    if (!cam.dragging && cam.follow && !input.mouse.l) {
-      const behind = p.facing + Math.PI;
-      if (p.approach) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 1.2);
-      else if (!input.joy.active) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 2.5);
-      else if (fwd === 0) cam.yaw = behind + normAngle(cam.yaw - behind) * Math.exp(-dt * 0.8);
-    }
+    // auto-jump: blocked while pushing forward on the ground means hop
+    const moved = Math.hypot(p.pos.x - x0, p.pos.z - z0);
+    if (manual && !p.airborne && !p.swimming && moved < sp * dt * 0.3) {
+      p._blockedT = (p._blockedT ?? 0) + dt;
+      if (p._blockedT > 0.12) { wantJump = true; p._blockedT = 0; }
+    } else p._blockedT = 0;
   } else p.moving = 0;
-  if ((k.has(' ') || input.jump) && !p.airborne && !p.swimming && !rooted) {
-    p.vy = 8.2;
+  if (wantJump && !p.airborne && !p.swimming && !rooted) {
+    p.vy = JUMP_SPEED;
     p.airborne = true;
+    p.jumping = true;
     p.y += 0.05;
-    input.jump = false;
+    if (p.sitting) p.sitting = false;
     if (p.cast) p.interruptCast();
   }
+  input.jump = false;
 }
 function turnToward(cur, target, maxStep) {
   const d = normAngle(target - cur);
@@ -509,5 +479,5 @@ export function updateCamera(dt) {
   if (p.model) p.model.root.visible = d > 1.3;
 }
 
-export function clearInput() { input.keys.clear(); input.joy.active = false; input.joy.x = input.joy.y = 0; input.autorun = false; if (G.player) G.player.approach = null; }
+export function clearInput() { input.keys.clear(); input.joy.active = false; input.joy.x = input.joy.y = 0; input.jumpHeld = false; if (G.player) G.player.approach = null; }
 void heightAt; void friendly; void ABILITIES; void knownRank; void takeAll;

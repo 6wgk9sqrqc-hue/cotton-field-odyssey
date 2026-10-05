@@ -5,18 +5,35 @@ import * as THREE from '../lib/three.module.min.js';
 import { G } from '../state.js';
 
 // ---------- quality ----------
+// Tuned for phones: high is what a recent flagship can hold at a good frame
+// rate, and the resolution scales down on its own before quality has to drop.
 export const PRESETS = {
-  low: { shadows: false, shadowSize: 0, shadowRange: 0, pixelRatio: 1, minPixelRatio: 0.6, bloom: false, particles: 0.4, terrainShadows: false, far: 0.75 },
-  medium: { shadows: true, shadowSize: 1024, shadowRange: 34, pixelRatio: 1.5, minPixelRatio: 0.7, bloom: false, particles: 0.7, terrainShadows: false, far: 0.9 },
-  high: { shadows: true, shadowSize: 2048, shadowRange: 55, pixelRatio: 2, minPixelRatio: 0.85, bloom: true, particles: 1, terrainShadows: true, far: 1 },
+  low: { shadows: false, shadowSize: 0, shadowRange: 0, pixelRatio: 1.25, minPixelRatio: 0.6, bloom: false, particles: 0.5, terrainShadows: false, far: 0.75, bump: false, flowers: 0 },
+  medium: { shadows: true, shadowSize: 1024, shadowRange: 32, pixelRatio: 1.6, minPixelRatio: 0.7, bloom: false, particles: 0.8, terrainShadows: false, far: 0.9, bump: true, flowers: 0.5 },
+  high: { shadows: true, shadowSize: 2048, shadowRange: 46, pixelRatio: 2, minPixelRatio: 0.75, bloom: true, particles: 1, terrainShadows: true, far: 1, bump: true, flowers: 1 },
 };
+export const QUALITY_ORDER = ['low', 'medium', 'high'];
 const QKEY = 'wov_quality';
 
+// Pick a starting quality from the GPU name the browser reports.
 export function detectQuality() {
-  const mem = navigator.deviceMemory ?? 8;
-  const cores = navigator.hardwareConcurrency ?? 8;
-  if (G.isTouch) return mem <= 2 || cores <= 2 ? 'low' : 'medium';
-  return cores <= 2 ? 'medium' : 'high';
+  let r = '';
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2');
+    if (!gl) return 'low';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    r = String((ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || '');
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch { return 'medium'; }
+  if (/swiftshader|llvmpipe|software/i.test(r)) return 'medium';
+  if (/apple/i.test(r)) return 'high';
+  const adreno = r.match(/adreno[^0-9]*(\d{3})/i);
+  if (adreno) return +adreno[1] >= 640 ? 'high' : +adreno[1] >= 600 ? 'medium' : 'low';
+  if (/immortalis|xclipse|mali-g7\d|mali-g6[1-9]|mali-g710|mali-g715|mali-g720/i.test(r)) return 'high';
+  if (/mali-g/i.test(r)) return 'medium';
+  if (/mali-t|powervr|sgx|adreno.?[1-4]\d\d/i.test(r)) return 'low';
+  return (navigator.deviceMemory ?? 8) <= 2 ? 'low' : 'high';
 }
 export function loadQuality() {
   let q = null;
@@ -181,10 +198,12 @@ function addUniforms(sh, extra) {
 const NEAR_FADE = /* glsl */`
   {
     float camD = length(vViewPosition);
-    float keep = smoothstep(1.6, 4.2, camD);
-    if (keep < 1.0) {
-      float n = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
-      if (n > keep) discard;
+    float keep = smoothstep(2.2, 3.6, camD);
+    if (keep < 0.999) {
+      // ordered 4x4 dither: an even screen-door pattern rather than noise
+      const float BAYER[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
+      int bx = int(mod(gl_FragCoord.x, 4.0)), by = int(mod(gl_FragCoord.y, 4.0));
+      if (keep < (BAYER[by * 4 + bx] + 0.5) / 16.0) discard;
     }
   }
 `;
@@ -212,23 +231,50 @@ const TERRAIN_FRAG = /* glsl */`
     // broad patches of lusher and drier ground
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.12, 1.02, 0.78), w.x * smoothstep(0.45, 0.75, macro2) * 0.6);
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.78, 0.92, 0.8), w.x * smoothstep(0.55, 0.25, macro2) * 0.6);
+    wovHeight = detail * (0.6 + 0.8 * (w.z + w.y * 0.6));
+    diffuseColor.rgb *= cloudShade(vWPos.xz);
     // a little extra green in lush grass, dust on the dirt
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.92, 1.06, 0.9), w.x * (tf.r - 0.4));
   }
 `;
+// Shadows of passing clouds, sampled from a large, slowly drifting noise.
+const CLOUD_GLSL = /* glsl */`
+  uniform float uTime;
+  uniform float uCloud;
+  float cloudShade(vec2 p) {
+    float n = texture2D(uDetail, p * 0.0017 + uTime * vec2(0.0011, 0.0005)).g;
+    return 1.0 - smoothstep(0.42, 0.72, n) * 0.34 * uCloud;
+  }
+`;
+// Per-pixel relief from a height value, using screen-space derivatives.
+const BUMP_GLSL = /* glsl */`
+  #ifdef WOV_BUMP
+  {
+    vec2 dH = vec2(dFdx(wovHeight), dFdy(wovHeight)) * uBump;
+    vec3 sx = normalize(dFdx(-vViewPosition)), sy = normalize(dFdy(-vViewPosition));
+    vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+    float det = dot(sx, r1) * faceDirection;
+    normal = normalize(abs(det) * normal - sign(det) * (dH.x * r1 + dH.y * r2));
+  }
+  #endif
+`;
+function bumpOn() { return !!preset().bump; }
+
 export function terrainMaterial() {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
   const tex = detailTexture();
   m.onBeforeCompile = (sh) => {
-    addUniforms(sh, { uDetail: { value: tex } });
+    addUniforms(sh, { uDetail: { value: tex }, uBump: { value: 2.2 } });
+    if (bumpOn()) sh.defines = { ...(sh.defines ?? {}), WOV_BUMP: '' };
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 surf;\nvarying vec4 vSurf;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurf = surf;\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uDetail;\nvarying vec4 vSurf;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\n' + TERRAIN_FRAG);
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uDetail;\nuniform float uBump;\nvarying vec4 vSurf;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\n' + CLOUD_GLSL)
+      .replace('#include <color_fragment>', '#include <color_fragment>\nfloat wovHeight = 0.5;\n' + TERRAIN_FRAG)
+      .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + BUMP_GLSL);
   };
-  m.customProgramCacheKey = () => 'wov-terrain';
+  m.customProgramCacheKey = () => 'wov-terrain-' + bumpOn();
   return m;
 }
 
@@ -273,22 +319,27 @@ const STRUCT_FRAG = /* glsl */`
     else if (sid > 2.5 && sid < 3.5) pv = texture2D(uPattern, puv * 0.55).b;
     else if (sid > 3.5) pv = texture2D(uPattern, puv * 0.22).a;
     diffuseColor.rgb *= 0.5 + pv;
+    wovHeight = sid > 0.5 ? pv : 0.5;
+    diffuseColor.rgb *= cloudShade(vWPos.xz);
   }
 `;
 export function structureMaterial() {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
   const tex = patternTexture();
+  const det = detailTexture();
   m.onBeforeCompile = (sh) => {
-    addUniforms(sh, { uPattern: { value: tex } });
+    addUniforms(sh, { uPattern: { value: tex }, uDetail: { value: det }, uBump: { value: 1.6 } });
+    if (bumpOn()) sh.defines = { ...(sh.defines ?? {}), WOV_BUMP: '' };
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float surfId;\nvarying float vSurfId;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurfId = surfId;\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uPattern;\nvarying float vSurfId;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\n' + STRUCT_FRAG)
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uPattern;\nuniform sampler2D uDetail;\nuniform float uBump;\nvarying float vSurfId;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\n' + CLOUD_GLSL)
+      .replace('#include <color_fragment>', '#include <color_fragment>\nfloat wovHeight = 0.5;\n' + STRUCT_FRAG)
+      .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + BUMP_GLSL)
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + NEAR_FADE);
   };
-  m.customProgramCacheKey = () => 'wov-struct';
+  m.customProgramCacheKey = () => 'wov-struct-' + bumpOn();
   return m;
 }
 

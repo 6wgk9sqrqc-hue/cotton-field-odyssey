@@ -58,6 +58,11 @@ export function initPost(r) {
       void main() {
         vec3 c = texture2D(tScene, vUv).rgb;
         c += (texture2D(tBloomA, vUv).rgb * 0.7 + texture2D(tBloomB, vUv).rgb) * uStrength;
+        // grade: a little more saturation and contrast, warm highlights, cool shadows
+        float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+        c = max(vec3(0.0), mix(vec3(l), c, 1.12));
+        c *= mix(vec3(0.95, 0.98, 1.05), vec3(1.05, 1.0, 0.94), smoothstep(0.05, 0.8, l));
+        c = mix(c, c * c * (3.0 - 2.0 * min(c, vec3(1.0))), 0.12);
         vec2 d = vUv - 0.5;
         c *= mix(1.0, 0.72, smoothstep(0.32, 0.95, dot(d, d) * 2.2));
         gl_FragColor = vec4(c, 1.0);

@@ -143,10 +143,10 @@ function configureShadows() {
 }
 
 // Switch quality while playing: resolution, shadows and bloom change live.
-export function applyQuality(q) {
+export function applyQuality(q, persist = true) {
   if (!PRESETS[q]) return;
   G.quality = q;
-  storeQuality(q);
+  if (persist) storeQuality(q);
   const P = preset();
   G.maxPixelRatio = Math.min(window.devicePixelRatio || 1, P.pixelRatio);
   G.pixelRatio = G.maxPixelRatio;
@@ -167,7 +167,7 @@ function onResize() {
   G.renderer.setSize(w, h, false);
   G.camera.aspect = w / h;
   // tall screens get a wider vertical view so the sides are not cut off
-  G.camera.fov = w / h < 1 ? 74 : 60;
+  G.camera.fov = w / h < 1 ? 80 : 70;
   G.camera.updateProjectionMatrix();
   resizePost(w, h, G.renderer.getPixelRatio());
 }

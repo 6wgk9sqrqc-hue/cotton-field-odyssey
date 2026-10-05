@@ -1,8 +1,8 @@
 // Boot, character creation/loading and the main loop.
 import { G, emit, on } from './state.js';
 import './data/abilities/index.js';
-import { initScene, updateScene, render, setPixelRatio } from './engine/scene.js';
-import { preset } from './engine/gfx.js';
+import { initScene, updateScene, render, setPixelRatio, applyQuality } from './engine/scene.js';
+import { preset, QUALITY_ORDER } from './engine/gfx.js';
 import { initFx, updateFx } from './engine/fx.js';
 import { heightAt } from './engine/terrain.js';
 import { dungeonWalkable } from './engine/collision.js';
@@ -39,8 +39,10 @@ function progress(msg, f) {
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
 async function boot() {
-  G.isTouch = matchMedia('(pointer: coarse)').matches;
-  if (G.isTouch) document.body.classList.add('touch');
+  // The game is built for phones: every device gets the touch layout. With a
+  // mouse, dragging on the left side works as the thumbstick.
+  G.isTouch = true;
+  document.body.classList.add('touch');
   progress('Shaping the land…', 0.1);
   await nextFrame();
   let k = 0;
@@ -207,15 +209,22 @@ function loop(now) {
 }
 // Dynamic resolution: drop the render scale when frames run long, raise it
 // again when there is headroom. Frame time is measured between animation frames.
-let slowT = 0, fastT = 0;
+// If frames stay slow even at the lowest resolution, drop one quality level
+// for this session (the saved choice is left alone).
+let slowT = 0, fastT = 0, floorT = 0, warmT = 0;
 function adaptResolution(dt) {
   if (window.__noDynRes || !G.running || document.hidden) return;
+  warmT += dt;
+  if (warmT < 6) return; // shaders are still compiling right after loading
   const P = preset();
   const ms = dt * 1000;
   if (ms > 24) { slowT += dt; fastT = 0; } else if (ms < 15) { fastT += dt; slowT = Math.max(0, slowT - dt); } else { slowT = Math.max(0, slowT - dt * 0.5); fastT = 0; }
   const minPr = Math.min(G.maxPixelRatio, P.minPixelRatio);
   if (slowT > 1.5 && G.pixelRatio > minPr + 0.01) { setPixelRatio(Math.max(minPr, G.pixelRatio - 0.15)); slowT = 0; }
   else if (fastT > 4 && G.pixelRatio < G.maxPixelRatio - 0.01) { setPixelRatio(Math.min(G.maxPixelRatio, G.pixelRatio + 0.1)); fastT = 0; }
+  floorT = G.pixelRatio <= minPr + 0.01 && ms > 26 ? floorT + dt : Math.max(0, floorT - dt * 0.5);
+  const qi = QUALITY_ORDER.indexOf(G.quality);
+  if (floorT > 5 && qi > 0) { floorT = 0; warmT = 0; applyQuality(QUALITY_ORDER[qi - 1], false); }
 }
 const ACTIVE_R = 130;
 // how far away creatures and people are drawn

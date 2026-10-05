@@ -58,6 +58,22 @@ export function mergeParts(parts, opts = {}) {
     o += g.attributes.position.count;
     g.dispose();
   }
+  if (opts.shade) {
+    // fake ambient occlusion and sky light: darker low down, brighter on top
+    let y0 = Infinity, y1 = -Infinity;
+    for (let i = 1; i < pos.length; i += 3) { y0 = Math.min(y0, pos[i]); y1 = Math.max(y1, pos[i]); }
+    const span = Math.max(0.01, y1 - y0);
+    const moss = opts.moss ? new THREE.Color(opts.moss) : null;
+    for (let i = 0; i < count; i++) {
+      const t = (pos[i * 3 + 1] - y0) / span, ny = nor[i * 3 + 1];
+      let f = opts.shade[0] + (opts.shade[1] - opts.shade[0]) * t * t * (3 - 2 * t) + ny * 0.1;
+      if (moss && ny > 0.5) {
+        const m = Math.min(1, (ny - 0.5) / 0.4) * 0.75;
+        col[i * 3] += (moss.r - col[i * 3]) * m; col[i * 3 + 1] += (moss.g - col[i * 3 + 1]) * m; col[i * 3 + 2] += (moss.b - col[i * 3 + 2]) * m;
+      }
+      col[i * 3] *= f; col[i * 3 + 1] *= f; col[i * 3 + 2] *= f;
+    }
+  }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
@@ -90,63 +106,92 @@ function prism() {
   return g;
 }
 const PRISM = prism();
+function lumpy(geo, amt, seed) {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const k = hash2(Math.round(x * 97) + Math.round(z * 31), Math.round(y * 89), seed);
+    const f = 1 + (k - 0.5) * amt;
+    p.setXYZ(i, x * f, y * (1 + (k - 0.5) * amt * 0.6), z * f);
+  }
+  g.computeVertexNormals();
+  return g;
+}
 PRISM.userData.prism = true;
 
 // ---------- prop designs ----------
 const PROPS = {
   oak: () => mergeParts([
-    { g: C(0.25, 0.4, 3, 6), c: 0x5a3e26, p: [0, 1.5, 0] },
-    { g: I(2.0, 0), c: 0x4f7f34, p: [0, 3.8, 0], s: [1, 0.85, 1] },
-    { g: I(1.4, 0), c: 0x5f9040, p: [0.9, 4.4, 0.4] },
-    { g: I(1.3, 0), c: 0x467530, p: [-0.8, 4.1, -0.5] },
-  ]),
+    { g: C(0.24, 0.42, 3, 6), c: 0x5a3e26, p: [0, 1.5, 0] },
+    { g: C(0.09, 0.16, 1.6, 5), c: 0x5a3e26, p: [0.55, 3.0, 0.1], r: [0, 0, -0.7] },
+    { g: C(0.08, 0.14, 1.4, 5), c: 0x5a3e26, p: [-0.5, 2.9, -0.2], r: [0.2, 0, 0.7] },
+    { g: I(1.9, 0), c: 0x4c7c32, p: [0, 3.9, 0], s: [1, 0.82, 1] },
+    { g: I(1.35, 0), c: 0x5b8e3c, p: [1.15, 4.35, 0.45] },
+    { g: I(1.25, 0), c: 0x44722e, p: [-1.05, 4.05, -0.55] },
+    { g: I(1.15, 0), c: 0x629a42, p: [0.2, 4.95, -0.6] },
+    { g: I(1.0, 0), c: 0x528636, p: [-0.4, 4.6, 1.0] },
+  ], { shade: [0.62, 1.12] }),
   appletree: () => mergeParts([
     { g: C(0.2, 0.32, 2.2, 6), c: 0x5a3e26, p: [0, 1.1, 0] },
-    { g: I(1.6, 0), c: 0x5a8a3a, p: [0, 3.0, 0] },
-    { g: S(0.14, 5, 4), c: 0xc0302a, p: [0.9, 2.8, 0.9] },
-    { g: S(0.14, 5, 4), c: 0xc0302a, p: [-1.0, 3.2, 0.4] },
-    { g: S(0.14, 5, 4), c: 0xc0302a, p: [0.3, 2.6, -1.2] },
-  ]),
+    { g: I(1.5, 0), c: 0x568838, p: [0, 3.0, 0] },
+    { g: I(1.0, 0), c: 0x629640, p: [0.8, 3.3, 0.3] },
+    { g: I(0.95, 0), c: 0x4c7e32, p: [-0.7, 3.1, -0.4] },
+    { g: S(0.15, 6, 4), c: 0xd0302a, p: [0.95, 2.8, 0.9] },
+    { g: S(0.15, 6, 4), c: 0xc02826, p: [-1.0, 3.2, 0.5] },
+    { g: S(0.15, 6, 4), c: 0xd8382e, p: [0.3, 2.6, -1.25] },
+    { g: S(0.15, 6, 4), c: 0xc8302a, p: [-0.3, 3.9, 0.9] },
+  ], { shade: [0.66, 1.1] }),
   pine: () => mergeParts([
-    { g: C(0.2, 0.32, 2.4, 6), c: 0x4a3222, p: [0, 1.2, 0] },
-    { g: K(2.2, 3.4, 7), c: 0x2c5a34, p: [0, 3.4, 0] },
-    { g: K(1.7, 3.0, 7), c: 0x316638, p: [0, 5.0, 0] },
-    { g: K(1.1, 2.4, 7), c: 0x37703e, p: [0, 6.6, 0] },
-  ]),
+    { g: C(0.18, 0.32, 2.4, 6), c: 0x4a3222, p: [0, 1.2, 0] },
+    { g: K(2.3, 2.6, 8), c: 0x2a5632, p: [0, 2.9, 0] },
+    { g: K(1.95, 2.4, 8), c: 0x2e5e36, p: [0, 4.1, 0], r: [0, 0.4, 0] },
+    { g: K(1.55, 2.2, 8), c: 0x33683b, p: [0, 5.2, 0] },
+    { g: K(1.1, 2.0, 8), c: 0x387242, p: [0, 6.3, 0], r: [0, 0.4, 0] },
+    { g: K(0.6, 1.4, 7), c: 0x3e7a46, p: [0, 7.3, 0] },
+  ], { shade: [0.55, 1.12] }),
   bigtree: () => mergeParts([
-    { g: C(0.5, 0.9, 5, 7), c: 0x4a3426, p: [0, 2.5, 0] },
+    { g: C(0.5, 0.95, 5, 8), c: 0x4a3426, p: [0, 2.5, 0] },
     { g: C(0.15, 0.3, 3, 5), c: 0x4a3426, p: [1.2, 4.6, 0], r: [0, 0, -0.8] },
-    { g: I(3.0, 0), c: 0x2f5a2c, p: [0, 6.6, 0], s: [1.1, 0.75, 1.1] },
-    { g: I(2.0, 0), c: 0x3a6a32, p: [2.0, 6.0, 1.0] },
-    { g: I(2.2, 0), c: 0x284e28, p: [-1.8, 6.4, -0.8] },
-  ]),
+    { g: C(0.14, 0.28, 2.6, 5), c: 0x4a3426, p: [-1.0, 4.4, 0.5], r: [0.3, 0, 0.8] },
+    { g: I(3.0, 0), c: 0x2d582a, p: [0, 6.6, 0], s: [1.1, 0.75, 1.1] },
+    { g: I(2.0, 0), c: 0x386830, p: [2.1, 6.1, 1.0] },
+    { g: I(2.2, 0), c: 0x264c26, p: [-1.9, 6.4, -0.8] },
+    { g: I(1.8, 0), c: 0x3c7034, p: [0.4, 7.7, -1.2] },
+    { g: I(1.6, 0), c: 0x305e2c, p: [-0.8, 7.2, 1.6] },
+  ], { shade: [0.55, 1.1] }),
   cypress: () => mergeParts([
     { g: C(0.25, 0.6, 5, 6), c: 0x5a4a38, p: [0, 2.5, 0] },
     { g: S(2.2, 7, 5), c: 0x5a6a34, p: [0, 5.6, 0], s: [1, 0.5, 1] },
     { g: B(0.15, 1.6, 0.15), c: 0x7a8a5a, p: [1.4, 4.6, 0] },
     { g: B(0.15, 1.8, 0.15), c: 0x7a8a5a, p: [-1.2, 4.5, 0.6] },
     { g: B(0.15, 1.4, 0.15), c: 0x7a8a5a, p: [0.2, 4.7, -1.5] },
-  ]),
+  ], { shade: [0.6, 1.1] }),
   deadtree: () => mergeParts([
     { g: C(0.18, 0.35, 4, 5), c: 0x3a3430, p: [0, 2, 0] },
     { g: C(0.07, 0.14, 2, 4), c: 0x3a3430, p: [0.7, 3.6, 0], r: [0, 0, -0.9] },
     { g: C(0.06, 0.12, 1.6, 4), c: 0x3a3430, p: [-0.6, 3.2, 0.2], r: [0.2, 0, 0.9] },
     { g: C(0.05, 0.1, 1.4, 4), c: 0x3a3430, p: [0, 4.2, -0.5], r: [-0.8, 0, 0] },
-  ]),
+  ], { shade: [0.7, 1.15] }),
   bush: () => mergeParts([
     { g: I(0.8, 0), c: 0x4f7a32, p: [0, 0.5, 0], s: [1.2, 0.8, 1] },
     { g: I(0.6, 0), c: 0x5a8a3a, p: [0.6, 0.45, 0.3] },
-  ]),
+    { g: I(0.55, 0), c: 0x467030, p: [-0.55, 0.4, -0.25] },
+  ], { shade: [0.6, 1.1] }),
   fern: () => mergeParts([
     { g: K(0.5, 1.0, 5), c: 0x3f7a3a, p: [0, 0.5, 0] },
     { g: K(0.4, 0.8, 5), c: 0x4a8a40, p: [0.4, 0.4, 0.2], r: [0, 0, -0.4] },
     { g: K(0.4, 0.8, 5), c: 0x4a8a40, p: [-0.4, 0.4, -0.1], r: [0, 0, 0.4] },
   ]),
-  rock: () => mergeParts([{ g: D(1.0), c: 0x85807a, p: [0, 0.4, 0], s: [1.2, 0.8, 1] }]),
+  rock: () => mergeParts([
+    { g: lumpy(new THREE.IcosahedronGeometry(1.0, 1), 0.35, 3), c: 0x85807a, p: [0, 0.35, 0], s: [1.2, 0.75, 1] },
+    { g: lumpy(new THREE.IcosahedronGeometry(0.45, 0), 0.3, 4), c: 0x7d7872, p: [0.95, 0.15, 0.35] },
+  ], { shade: [0.62, 1.1], moss: 0x5d7a3a }),
   bigrock: () => mergeParts([
-    { g: D(2.4), c: 0x7a756e, p: [0, 1.2, 0], s: [1.3, 0.9, 1.1] },
-    { g: D(1.2), c: 0x8a857e, p: [1.8, 0.6, 0.6] },
-  ]),
+    { g: lumpy(new THREE.IcosahedronGeometry(2.4, 1), 0.3, 5), c: 0x7a756e, p: [0, 1.1, 0], s: [1.3, 0.9, 1.1] },
+    { g: lumpy(new THREE.IcosahedronGeometry(1.2, 1), 0.3, 6), c: 0x8a857e, p: [1.9, 0.5, 0.7] },
+    { g: lumpy(new THREE.IcosahedronGeometry(0.7, 0), 0.3, 7), c: 0x77726b, p: [-2.1, 0.3, -0.9] },
+  ], { shade: [0.55, 1.1], moss: 0x5a7438 }),
   ashspike: () => mergeParts([
     { g: K(0.9, 4.5, 5), c: 0x3a3230, p: [0, 2.0, 0], r: [0.1, 0, 0.08] },
     { g: K(0.5, 2.6, 5), c: 0x4a3a34, p: [1.0, 1.1, 0.3], r: [0, 0, -0.2] },
@@ -274,7 +319,7 @@ export function buildScenery(scene) {
           const rot = hash2(x, z, 12) * Math.PI * 2;
           const tint = 0.85 + hash2(x, z, 13) * 0.3;
           addInstance(type, jx, jz, rot, scale, tint, type === 'cypress' && h < 0 ? h : 0.1);
-          if (COLLIDE[type]) addCircle(jx, jz, COLLIDE[type] * scale);
+          if (COLLIDE[type]) addCircle(jx, jz, COLLIDE[type] * scale, type === 'rock' ? 1.05 * scale : undefined);
           break;
         }
       }
@@ -340,7 +385,7 @@ function fence(x1, z1, x2, z2, color = 0x8a6a44) {
       fenceParts.push({ g: B(0.08, 0.12, seg), c: color, p: [mx, my + 0.55, mz], r: [-tilt, rot, 0], order: 'YXZ' });
     }
   }
-  addBox((x1 + x2) / 2, (z1 + z2) / 2, 0.15, L / 2, rot);
+  addBox((x1 + x2) / 2, (z1 + z2) / 2, 0.15, L / 2, rot, 1.25);
 }
 
 function rotPt(x, z, rot) {

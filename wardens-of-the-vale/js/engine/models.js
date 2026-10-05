@@ -67,7 +67,7 @@ export function bakeModel(m, key) {
   const groups = [];
   m.root.traverse((o) => { if (!o.isMesh) groups.push(o); });
   groups.forEach((g, gi) => {
-    const list = g.children.filter((c) => c.isMesh && !refs.has(c) && !c.children.length && c.material?.isMeshLambertMaterial && !c.material.transparent && c.material.emissive.getHex() === 0);
+    const list = g.children.filter((c) => c.isMesh && !refs.has(c) && !c.children.length && c.material?.isMeshLambertMaterial && !c.material.transparent && !c.material.map && c.material.emissive.getHex() === 0);
     if (list.length < 2) return;
     const ck = key !== undefined ? key + '#' + gi : null;
     let geo = ck ? bakeCache.get(ck) : null;
@@ -112,6 +112,52 @@ function mergeMeshes(list) {
   out.computeBoundingSphere();
   return out;
 }
+
+// ---------------- faces ----------------
+// Simple drawn faces in the spirit of classic blocky avatars: a few styles of
+// eyes, brows and mouths painted onto a transparent texture.
+const faceTex = [];
+function faceTexture(i) {
+  if (faceTex[i]) return faceTex[i];
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#1c130d'; x.strokeStyle = '#1c130d'; x.lineCap = 'round';
+  const eye = (cx, cy, w, h) => {
+    x.beginPath(); x.ellipse(cx, cy, w, h, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = 'rgba(255,255,255,0.9)';
+    x.beginPath(); x.arc(cx - w * 0.3, cy - h * 0.4, Math.max(2, w * 0.35), 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1c130d';
+  };
+  const style = i % 6;
+  const ey = 54;
+  if (style === 3) { x.lineWidth = 6; for (const cx of [40, 88]) { x.beginPath(); x.arc(cx, ey + 4, 10, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); } }
+  else eye(40, ey, style === 5 ? 6 : 8, style === 5 ? 9 : 12), eye(88, ey, style === 5 ? 6 : 8, style === 5 ? 9 : 12);
+  x.lineWidth = 5;
+  if (style === 1 || style === 4) { // brows
+    x.beginPath(); x.moveTo(28, ey - 22 + (style === 4 ? 4 : 0)); x.lineTo(50, ey - 18 - (style === 4 ? 4 : 0)); x.stroke();
+    x.beginPath(); x.moveTo(100, ey - 22 + (style === 4 ? 4 : 0)); x.lineTo(78, ey - 18 - (style === 4 ? 4 : 0)); x.stroke();
+  }
+  x.lineWidth = 6;
+  x.beginPath();
+  if (style === 0 || style === 3) x.arc(64, 78, 20, Math.PI * 0.18, Math.PI * 0.82); // smile
+  else if (style === 1) { x.moveTo(50, 92); x.lineTo(78, 90); } // determined
+  else if (style === 2) { x.arc(64, 80, 16, Math.PI * 0.1, Math.PI * 0.9); x.closePath(); x.fill(); } // grin
+  else if (style === 4) { x.moveTo(48, 88); x.quadraticCurveTo(70, 94, 82, 82); } // confident smirk
+  else x.arc(64, 82, 12, Math.PI * 0.2, Math.PI * 0.8); // small smile
+  x.stroke();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  faceTex[i] = t;
+  return t;
+}
+const faceMats = [];
+function faceMaterial(i) {
+  faceMats[i] ??= new THREE.MeshLambertMaterial({ map: faceTexture(i), transparent: true, alphaTest: 0.4, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  return faceMats[i];
+}
+const faceGeo = new THREE.PlaneGeometry(1, 1);
 
 function mesh(geo, color, x = 0, y = 0, z = 0, opts) {
   const m = new THREE.Mesh(geo, typeof color === 'object' ? color : mat(color, opts));
@@ -254,7 +300,14 @@ export function humanoid(o = {}) {
   const hs = (o.headScale ?? 1) * 0.34;
   const head = mesh(box(hs, hs * 1.05, hs), o.headColor ?? skin, 0, hs * 0.55, 0);
   headPivot.add(head);
-  if (o.face !== false && !o.helm?.full) {
+  if (o.face !== false && !o.helm?.full && !o.eyes && !o.snout) {
+    // a drawn face, picked from the look so each person keeps the same one
+    const k = Math.abs(((o.skin ?? 0) * 7 + (o.shirt ?? 0) * 13 + (o.hair ?? 0) * 3 + (o.hairStyle ?? 0)) | 0) % 6;
+    const f = new THREE.Mesh(faceGeo, faceMaterial(k));
+    f.scale.set(hs * 0.92, hs * 0.92, 1);
+    f.position.set(0, hs * 0.55, hs / 2 + 0.004);
+    headPivot.add(f);
+  } else if (o.face !== false && !o.helm?.full) {
     headPivot.add(mesh(box(0.05, 0.04, 0.02), o.eyes ?? 0x222222, -0.07 * (hs / 0.34), hs * 0.62, hs / 2 + 0.005, o.eyes ? { basic: true } : undefined));
     headPivot.add(mesh(box(0.05, 0.04, 0.02), o.eyes ?? 0x222222, 0.07 * (hs / 0.34), hs * 0.62, hs / 2 + 0.005, o.eyes ? { basic: true } : undefined));
   }
@@ -681,6 +734,12 @@ export function animate(m, dt, st) {
       m.armR.rotation.z = -0.35; m.armL.rotation.z = 0.35;
     }
     if (st.shoot) { al = -1.55; ar = -1.4; m.armR.rotation.z = 0.5; m.armL.rotation.z = -0.1; }
+    // jumping: arms thrown up overhead
+    if (st.airborne && !(swing > 0) && !(cast > 0) && !st.shoot) {
+      m.jumpT = Math.min(1, (m.jumpT ?? 0) + dt * 9);
+      ar = ar + (-2.9 - ar) * m.jumpT; al = al + (-2.9 - al) * m.jumpT;
+      m.armR.rotation.z = 0.25 * m.jumpT; m.armL.rotation.z = -0.25 * m.jumpT;
+    } else m.jumpT = 0;
     m.armR.rotation.x = ar;
     m.armL.rotation.x = al;
     if (st.stunned) m.head.rotation.z = Math.sin(t * 6) * 0.25; else m.head.rotation.z = 0;

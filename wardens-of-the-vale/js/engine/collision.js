@@ -6,12 +6,13 @@ const CELL = 16;
 const grid = new Map();
 const key = (cx, cz) => cx * 73856093 ^ cz * 19349663;
 
-export function addCircle(x, z, r) {
-  insert({ type: 'c', x, z, r });
+// h: optional height; something jumping higher than that clears the obstacle
+export function addCircle(x, z, r, h) {
+  insert({ type: 'c', x, z, r, h });
 }
 // Oriented box: centre, half width (local x), half depth (local z), rotation (y).
-export function addBox(x, z, hw, hd, rot = 0) {
-  insert({ type: 'b', x, z, hw, hd, rot, cos: Math.cos(rot), sin: Math.sin(rot) });
+export function addBox(x, z, hw, hd, rot = 0, h) {
+  insert({ type: 'b', x, z, hw, hd, rot, cos: Math.cos(rot), sin: Math.sin(rot), h });
 }
 function insert(c) {
   const ext = c.type === 'c' ? c.r : Math.hypot(c.hw, c.hd);
@@ -44,10 +45,11 @@ export function dungeonWalkable(x, z, r = 0.5) {
 }
 
 // Push a point out of every collider it overlaps. Returns the corrected point.
-export function resolve(x, z, r) {
+export function resolve(x, z, r, above = 0) {
   for (let iter = 0; iter < 3; iter++) {
     let moved = false;
     for (const c of nearby(x, z)) {
+      if (c.h !== undefined && above > c.h - 0.15) continue;
       if (c.type === 'c') {
         const dx = x - c.x, dz = z - c.z;
         const d = Math.hypot(dx, dz), min = c.r + r;
