@@ -646,8 +646,8 @@ export function initHud() {
   $('minimapWrap').addEventListener('click', () => G.ui.toggle('map'));
   document.querySelectorAll('#microMenu button').forEach((b) => b.addEventListener('click', () => G.ui.toggle(b.dataset.win)));
   document.querySelectorAll('#chatTabs [data-tab]').forEach((b) => b.addEventListener('click', () => setChatTab(b.dataset.tab)));
-  $('chatHide').addEventListener('click', () => { document.body.classList.remove('chat-open'); if (!G.isTouch) $('chat').hidden = true; $('chatShow').hidden = false; });
-  $('chatShow').addEventListener('click', () => { document.body.classList.add('chat-open'); $('chat').hidden = false; if (!G.isTouch) $('chatShow').hidden = true; });
+  $('chatHide').addEventListener('click', () => { document.body.classList.remove('chat-open'); document.body.classList.add('chat-closed'); });
+  $('chatShow').addEventListener('click', () => { document.body.classList.toggle('chat-open'); document.body.classList.remove('chat-closed'); });
   $('playerFrame').addEventListener('click', () => setTarget(G.player));
   $('petFrame').addEventListener('click', () => setTarget(G.player.pet));
   const tap = (id, fn) => { const b = $(id); b.addEventListener('touchend', (e) => { fn(); e.preventDefault(); }); b.addEventListener('click', fn); };

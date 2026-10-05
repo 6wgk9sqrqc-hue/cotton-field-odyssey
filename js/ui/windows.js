@@ -30,25 +30,19 @@ let zTop = 30;
 // ---------- window frame ----------
 function openWin(name, title, opts = {}) {
   let w = wins.get(name);
+  const wasHidden = !w || w.el.hidden;
   if (!w) {
     const el = document.createElement('div');
     el.className = 'win panel' + (opts.parch ? ' parch' : '');
     el.innerHTML = `<div class="win-h"><h3></h3><button class="close" aria-label="Close">×</button></div><div class="win-b"></div><div class="win-foot" hidden></div>`;
     $('windows').appendChild(el);
-    w = { el, name, h: el.querySelector('h3'), b: el.querySelector('.win-b'), foot: el.querySelector('.win-foot') };
+    w = { el, name, h: el.querySelector('h3'), b: el.querySelector('.win-b'), foot: el.querySelector('.win-foot'), pos: opts.pos ?? 'left', dragged: false };
     el.querySelector('.close').addEventListener('click', () => closeWin(name));
     el.addEventListener('mousedown', () => { el.style.zIndex = ++zTop; });
-    dragify(el, el.querySelector('.win-h'));
+    dragify(el, el.querySelector('.win-h'), () => { w.dragged = true; });
     wins.set(name, w);
-    const W = opts.width ?? 380;
-    el.style.width = `min(${W}px, calc(100vw - 16px))`;
-    const pos = opts.pos ?? 'left';
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const left = pos === 'right' ? Math.max(8, vw - Math.min(W, vw - 16) - 190) : pos === 'center' ? Math.max(8, (vw - Math.min(W, vw - 16)) / 2) : Math.min(Math.max(8, vw * 0.06), vw - Math.min(W, vw - 16) - 8);
-    el.style.left = left + 'px';
-    el.style.top = Math.max(8, Math.min(90, vh * 0.12)) + 'px';
-    el.style.maxHeight = `calc(${vh}px - ${Math.max(8, Math.min(90, vh * 0.12))}px - 70px)`;
   }
+  if (wasHidden && !w.dragged) placeWin(w, opts);
   w.el.hidden = false;
   w.el.style.zIndex = ++zTop;
   w.h.textContent = title;
@@ -56,6 +50,29 @@ function openWin(name, title, opts = {}) {
   w.foot.innerHTML = '';
   document.querySelectorAll('#microMenu button').forEach((b) => b.classList.toggle('on', isOpen(b.dataset.win) || b.dataset.win === name));
   return w;
+}
+// Left-docked panels sit side by side, like the classic UI's panel slots,
+// so opening the character sheet and the spellbook together never stacks them.
+function placeWin(w, opts) {
+  const el = w.el;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const W = Math.min(opts.width ?? 380, vw - 16);
+  const top = opts.top ?? Math.max(8, Math.min(90, vh * 0.12));
+  el.style.width = W + 'px';
+  el.style.top = top + 'px';
+  el.style.maxHeight = opts.top !== undefined ? `${vh - top - 8}px` : `calc(${vh}px - ${top}px - 70px)`;
+  let left;
+  if (w.pos === 'right') left = Math.max(8, vw - W - 190);
+  else if (w.pos === 'center') left = Math.max(8, (vw - W) / 2);
+  else {
+    left = Math.min(Math.max(8, vw * 0.06), vw - W - 8);
+    for (const o of wins.values()) {
+      if (o === w || o.el.hidden || o.pos !== 'left' || o.dragged) continue;
+      const r = o.el.offsetLeft + o.el.offsetWidth + 8;
+      if (r + W <= vw - 8 && r > left) left = r;
+    }
+  }
+  el.style.left = left + 'px';
 }
 export function closeWin(name) {
   const w = wins.get(name);
@@ -66,7 +83,7 @@ export function closeWin(name) {
 }
 export function isOpen(name) { const w = wins.get(name); return !!w && !w.el.hidden; }
 export function closeAll() { for (const n of wins.keys()) closeWin(n); }
-function dragify(el, handle) {
+function dragify(el, handle, onDrag) {
   let start = null;
   handle.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button')) return;
@@ -75,6 +92,7 @@ function dragify(el, handle) {
   });
   handle.addEventListener('pointermove', (e) => {
     if (!start) return;
+    if (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 4) onDrag?.();
     el.style.left = Math.max(-el.offsetWidth + 60, Math.min(window.innerWidth - 60, start.l + e.clientX - start.x)) + 'px';
     el.style.top = Math.max(0, Math.min(window.innerHeight - 40, start.t + e.clientY - start.y)) + 'px';
   });
@@ -598,8 +616,9 @@ function renderLoot(m) {
 
 // ---------- world map ----------
 function renderMap() {
-  const w = openWin('map', 'World Map: The Vale', { width: 800, pos: 'center' });
-  w.b.innerHTML = `<div class="map-wrap"><canvas id="worldMap" width="900" height="900"></canvas></div><div class="legend"><span><b style="color:#ffd100">!</b> quest available</span><span><b style="color:#ffd100">?</b> quest complete</span><span><b style="color:#60ff60">▲</b> known flight path</span><span><b style="color:#b070ff">●</b> The Hollow Spire (dungeon)</span></div>`;
+  const size = Math.floor(Math.max(240, Math.min(window.innerWidth - 48, window.innerHeight - 120, 760)));
+  const w = openWin('map', 'World Map: The Vale', { width: size + 28, pos: 'center', top: 8 });
+  w.b.innerHTML = `<div class="map-wrap"><canvas id="worldMap" width="900" height="900" style="width:${size}px"></canvas></div><div class="legend"><span><b style="color:#ffd100">!</b> quest available</span><span><b style="color:#ffd100">?</b> quest complete</span><span><b style="color:#60ff60">▲</b> known flight path</span><span><b style="color:#b070ff">●</b> The Hollow Spire (dungeon)</span></div>`;
   drawWorldMap($('worldMap'));
 }
 

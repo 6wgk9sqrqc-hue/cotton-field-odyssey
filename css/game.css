@@ -66,7 +66,7 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 .ss-head { text-align: center; }
 .ss-head p { color: var(--muted); margin: 0; }
 .ss-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; }
-@media (max-width: 760px) { .ss-cols { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .ss-cols { grid-template-columns: minmax(0, 1fr); } .ss-cols.no-chars .ss-create { order: -1; } }
 .ss-section { padding: 14px; min-width: 0; }
 .ss-section h2 { font-family: var(--display); font-weight: 400; color: var(--gold); font-size: 20px; margin: 0 0 10px; }
 .char-list { display: grid; gap: 8px; }
@@ -215,7 +215,7 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 #chatHide { margin-left: auto; }
 #chatLog { height: 150px; overflow-y: auto; padding: 4px 6px; background: rgba(0, 0, 0, 0.42); border: 1px solid #3a2e1e; touch-action: pan-y; user-select: text; -webkit-user-select: text; }
 #chatLog div { line-height: 1.3; text-shadow: 0 1px 1px #000; }
-#chatShow { position: absolute; left: 8px; bottom: 8px; font-size: 12px; padding: 4px 10px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--edge); border-radius: 4px; }
+#chatShow { display: none; position: absolute; left: 8px; bottom: 8px; font-size: 12px; padding: 4px 10px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--edge); border-radius: 4px; }
 .c-sys { color: #ffff40; } .c-loot { color: #4ca0ff; } .c-xp { color: #c8a0ff; } .c-err { color: #ff6050; } .c-say { color: #ffffff; } .c-yell { color: #ff3a3a; } .c-emote { color: #ff8040; } .c-combat { color: #c8c8c8; } .c-quest { color: #ffd100; } .c-money { color: #f0e0a0; }
 
 /* ---------- center texts ---------- */
@@ -252,7 +252,7 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 
 /* ---------- windows ---------- */
 #windows { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
-.win { position: absolute; pointer-events: auto; display: flex; flex-direction: column; min-width: 0; max-width: calc(100vw - 16px); max-height: calc(100% - 16px); color: var(--text); }
+.win { position: absolute; pointer-events: auto; background: rgba(16, 11, 6, 0.97); display: flex; flex-direction: column; min-width: 0; max-width: calc(100vw - 16px); max-height: calc(100% - 16px); color: var(--text); }
 .win .win-h { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid #3a2e1e; background: linear-gradient(#3a2614, #1e140a); border-radius: 4px 4px 0 0; cursor: move; touch-action: none; }
 .win .win-h h3 { margin: 0; flex: 1; font-family: var(--display); font-weight: 400; font-size: 17px; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .win .close { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #8a2a1a; background: radial-gradient(#a02a1a, #4a0a04); font-weight: 800; cursor: pointer; padding: 0; line-height: 22px; }
@@ -365,7 +365,8 @@ body.touch #touchControls { display: grid; position: absolute; gap: 6px; grid-te
 #touchControls button { width: 50px; height: 50px; border-radius: 50%; font-size: 20px; line-height: 1; background: radial-gradient(#3a2e1e, #140e08); border: 2px solid var(--edge); display: grid; place-items: center; padding: 0; }
 #touchControls small { display: block; font-size: 9px; color: var(--muted); }
 body.touch #chat { display: none; }
-body.touch #chatShow { display: block; }
+body.touch #chatShow, body.chat-closed #chatShow { display: block; }
+body.chat-closed:not(.touch) #chat { display: none; }
 body.touch.chat-open #chat { display: block; bottom: auto; top: 140px; left: 8px; width: min(360px, 60vw); z-index: 25; }
 body.touch #bottom { left: auto; right: max(8px, env(safe-area-inset-right)); transform: none; justify-items: end; }
 body.touch .actionbar { grid-template-columns: repeat(6, 52px); }

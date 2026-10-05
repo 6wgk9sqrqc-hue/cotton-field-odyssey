@@ -29,7 +29,7 @@ function render() {
   const C = CLASSES[creating.cls];
   $('startScreen').innerHTML = `<div class="ss-wrap">
     <div class="ss-head"><h1>Cotton Field Odyssey</h1><p>A classic adventure across the Vale. Nine classes. Four zones. One Hollow King.</p></div>
-    <div class="ss-cols">
+    <div class="ss-cols${chars.length ? '' : ' no-chars'}">
       <section class="ss-section panel">
         <h2>Your Characters</h2>
         ${chars.length ? `<div class="char-list">${chars.map((c) => `<div class="char-row ${c.id === sel ? 'sel' : ''}" data-id="${c.id}" tabindex="0"><img alt="" src="${classIcon(c.cls)}"><div class="meta"><div class="nm" style="color:${CLASSES[c.cls].color}">${escapeHTML(c.name)}</div><div class="sub">Level ${c.level} ${CLASSES[c.cls].name}${c.zone ? ' · ' + escapeHTML(c.zone) : ''}</div></div></div>`).join('')}</div>
@@ -42,7 +42,7 @@ function render() {
           <b>Touch:</b> left thumb moves, right thumb turns the camera, tap to target, tap again to interact.
         </div>
       </section>
-      <section class="ss-section panel">
+      <section class="ss-section panel ss-create">
         <h2>Create a Character</h2>
         <div class="class-grid">${CLASS_ORDER.map((id) => `<div class="class-pick ${id === creating.cls ? 'sel' : ''}" data-cls="${id}" tabindex="0"><img alt="" src="${classIcon(id)}"><span style="color:${CLASSES[id].color}">${CLASSES[id].name}</span></div>`).join('')}</div>
         <div class="class-info"><h3 style="color:${C.color}">${C.name}</h3><div class="role">${C.role}</div><p>${C.desc}</p><p class="ss-help">Resource: ${C.power === 'rage' ? 'Rage (builds as you deal and take damage)' : C.power === 'energy' ? 'Energy (refills quickly) and combo points' : 'Mana (regenerates after 5 seconds without casting)'}. Armor: ${C.armor.filter((a) => a !== 'shield').join(', ')}${C.armor.includes('shield') ? ', shields' : ''}. Talent trees: ${C.trees.join(', ')}.</p></div>
