@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}</style>
+</head>
+<body>
+<title>NFL Tier List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600&display=swap">
+<style>
+  /* Layout: stacked tier rows (letter cell + drop lane), team pool below, like a depth chart board */
+  :root {
+    --bg: #eef0ec;
+    --surface: #ffffff;
+    --lane: #f7f8f5;
+    --fg: #1a1f1c;
+    --muted: #5d665f;
+    --line: #d5d9d2;
+    --focus: #1f6feb;
+    --s: #e5484d; --a: #f08a3c; --b: #f2c94c; --c: #6cc06a; --d: #4f9ad8; --f: #9b6fd6;
+    --tier-ink: #1a1f1c;
+    --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111513; --surface: #1a1f1c; --lane: #151a17; --fg: #e9ede8; --muted: #9aa49c; --line: #2c342f; --focus: #58a6ff;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111513; --surface: #1a1f1c; --lane: #151a17; --fg: #e9ede8; --muted: #9aa49c; --line: #2c342f; --focus: #58a6ff;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; display: grid; gap: 18px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+  h1 { font-family: var(--display); font-weight: 900; font-size: clamp(2rem, 6vw, 3rem); line-height: .9; margin: 0; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+  .hint { margin: 6px 0 0; color: var(--muted); }
+  .btn { font: 600 14px var(--body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+  .btn:hover { border-color: var(--muted); }
+  .btn:focus-visible, .chip:focus-visible, .label:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .board { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .row { display: grid; grid-template-columns: 76px 1fr; min-height: 76px; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .label { display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 2.6rem; color: var(--tier-ink); cursor: pointer; user-select: none; border: 0; }
+  .lane { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; padding: 6px; background: var(--lane); min-width: 0; transition: background .12s; }
+  .lane.over, .row.target .lane { background: color-mix(in srgb, var(--focus) 12%, var(--lane)); }
+
+  .pool-wrap { display: grid; gap: 8px; }
+  .pool-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .pool-head h2 { font-family: var(--display); font-weight: 700; font-size: 1.4rem; text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #pool { border: 1px dashed var(--line); border-radius: 8px; min-height: 80px; background: var(--surface); }
+
+  .chip {
+    width: 78px; height: 64px; padding-inline: 2px; border-radius: 6px; flex: none;
+    background: var(--c1); color: var(--ink, #fff);
+    border-bottom: 5px solid var(--c2);
+    display: grid; place-content: center; text-align: center; gap: 1px;
+    cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none;
+    box-shadow: 0 1px 2px rgb(0 0 0 / .2);
+  }
+  .chip b { font-family: var(--display); font-weight: 900; font-size: 1.45rem; line-height: 1; letter-spacing: .02em; }
+  .chip span { font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; line-height: 1; opacity: .9; white-space: nowrap; }
+  .chip.placeholder { opacity: .3; }
+  .chip.selected { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .ghost { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 10; cursor: grabbing; transform-origin: center; box-shadow: 0 8px 20px rgb(0 0 0 / .35); }
+  @media (max-width: 480px) {
+    .row { grid-template-columns: 52px 1fr; min-height: 64px; }
+    .label { font-size: 2rem; }
+    .chip { width: 62px; height: 54px; }
+    .chip b { font-size: 1.2rem; }
+    .chip span { font-size: .5rem; letter-spacing: .02em; }
+  }
+  @media (prefers-reduced-motion: reduce) { .lane { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>NFL Tier List</h1>
+      <p class="hint">Drag teams into a tier. On a phone, tap a team, then tap a tier letter.</p>
+    </div>
+    <button class="btn" id="reset" type="button">Reset all</button>
+  </header>
+
+  <section class="board" id="board" aria-label="Tiers"></section>
+
+  <section class="pool-wrap">
+    <div class="pool-head">
+      <h2>Teams</h2>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="lane" id="pool" data-tier="pool" aria-label="Unranked teams"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const TIERS = [
+    ["S", "var(--s)"], ["A", "var(--a)"], ["B", "var(--b)"],
+    ["C", "var(--c)"], ["D", "var(--d)"], ["F", "var(--f)"]
+  ];
+  // [abbr, nickname, primary, stripe, text]
+  const TEAMS = [
+    ["ARI","Cardinals","#97233F","#FFB612"], ["ATL","Falcons","#A71930","#000000"],
+    ["BAL","Ravens","#241773","#9E7C0C"], ["BUF","Bills","#00338D","#C60C30"],
+    ["CAR","Panthers","#0085CA","#101820"], ["CHI","Bears","#0B162A","#C83803"],
+    ["CIN","Bengals","#FB4F14","#000000"], ["CLE","Browns","#311D00","#FF3C00"],
+    ["DAL","Cowboys","#003594","#869397"], ["DEN","Broncos","#FB4F14","#002244"],
+    ["DET","Lions","#0076B6","#B0B7BC"], ["GB","Packers","#203731","#FFB612"],
+    ["HOU","Texans","#03202F","#A71930"], ["IND","Colts","#002C5F","#A2AAAD"],
+    ["JAX","Jaguars","#006778","#D7A22A"], ["KC","Chiefs","#E31837","#FFB81C"],
+    ["LV","Raiders","#000000","#A5ACAF"], ["LAC","Chargers","#0080C6","#FFC20E"],
+    ["LAR","Rams","#003594","#FFD100"], ["MIA","Dolphins","#008E97","#FC4C02"],
+    ["MIN","Vikings","#4F2683","#FFC62F"], ["NE","Patriots","#002244","#C60C30"],
+    ["NO","Saints","#D3BC8D","#101820","#101820"], ["NYG","Giants","#0B2265","#A71930"],
+    ["NYJ","Jets","#125740","#FFFFFF"], ["PHI","Eagles","#004C54","#A5ACAF"],
+    ["PIT","Steelers","#FFB612","#101820","#101820"], ["SF","49ers","#AA0000","#B3995D"],
+    ["SEA","Seahawks","#002244","#69BE28"], ["TB","Buccaneers","#D50A0A","#34302B"],
+    ["TEN","Titans","#0C2340","#4B92DB"], ["WAS","Commanders","#5A1414","#FFB612"]
+  ];
+  const KEY = "nfl-tier-list-v1";
+  const board = document.getElementById("board");
+  const pool = document.getElementById("pool");
+  const countEl = document.getElementById("count");
+  const lanes = { pool };
+
+  for (const [t, color] of TIERS) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = "label";
+    label.textContent = t;
+    label.style.background = color;
+    label.setAttribute("aria-label", "Move selected team to tier " + t);
+    const lane = document.createElement("div");
+    lane.className = "lane";
+    lane.dataset.tier = t;
+    lane.setAttribute("aria-label", "Tier " + t);
+    row.append(label, lane);
+    board.append(row);
+    lanes[t] = lane;
+    label.addEventListener("click", () => moveSelected(lane));
+  }
+
+  const chips = {};
+  for (const [abbr, name, c1, c2, ink] of TEAMS) {
+    const el = document.createElement("div");
+    el.className = "chip";
+    el.tabIndex = 0;
+    el.dataset.id = abbr;
+    el.style.setProperty("--c1", c1);
+    el.style.setProperty("--c2", c2);
+    if (ink) el.style.setProperty("--ink", ink);
+    el.title = name;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", abbr + " " + name);
+    el.innerHTML = `<b>${abbr}</b><span>${name}</span>`;
+    chips[abbr] = el;
+    el.addEventListener("pointerdown", startDrag);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(el); }
+    });
+  }
+
+  function load() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    const placed = new Set();
+    if (saved && typeof saved === "object") {
+      for (const t of Object.keys(lanes)) {
+        for (const id of saved[t] || []) {
+          if (chips[id] && !placed.has(id)) { lanes[t].append(chips[id]); placed.add(id); }
+        }
+      }
+    }
+    for (const [abbr] of TEAMS) if (!placed.has(abbr)) pool.append(chips[abbr]);
+    update();
+  }
+  function save() {
+    const out = {};
+    for (const [t, lane] of Object.entries(lanes)) out[t] = [...lane.children].map((c) => c.dataset.id);
+    try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e) {}
+  }
+  function update() {
+    const n = pool.children.length;
+    countEl.textContent = n === 0 ? "All 32 ranked" : `${n} of 32 unranked`;
+  }
+
+  // Tap-to-select fallback (works well on phones)
+  let selected = null;
+  function select(el) {
+    if (selected === el) { el.classList.remove("selected"); selected = null; return; }
+    if (selected) selected.classList.remove("selected");
+    selected = el;
+    el.classList.add("selected");
+  }
+  function moveSelected(lane) {
+    if (!selected) return;
+    lane.append(selected);
+    selected.classList.remove("selected");
+    selected = null;
+    save(); update();
+  }
+  pool.addEventListener("click", (e) => { if (e.target === pool) moveSelected(pool); });
+  board.addEventListener("click", (e) => { if (e.target.classList.contains("lane")) moveSelected(e.target); });
+
+  // Pointer drag (mouse + touch)
+  let drag = null;
+  function startDrag(e) {
+    if (e.button !== 0) return;
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    drag = { el, startX: e.clientX, startY: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, ghost: null, lane: null };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+  }
+  function onMove(e) {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
+      const g = drag.el.cloneNode(true);
+      g.classList.remove("selected");
+      g.classList.add("ghost");
+      document.body.append(g);
+      drag.ghost = g;
+      drag.el.classList.add("placeholder");
+      if (selected) { selected.classList.remove("selected"); selected = null; }
+    }
+    drag.ghost.style.transform = `translate(${e.clientX - drag.dx}px, ${e.clientY - drag.dy}px) rotate(-3deg) scale(1.06)`;
+
+    if (e.clientY < 50) window.scrollBy(0, -12);
+    else if (e.clientY > innerHeight - 50) window.scrollBy(0, 12);
+
+    const hit = document.elementFromPoint(e.clientX, e.clientY);
+    let lane = hit && hit.closest(".lane");
+    if (!lane && hit && hit.closest(".row")) lane = hit.closest(".row").querySelector(".lane");
+    if (drag.lane && drag.lane !== lane) drag.lane.classList.remove("over");
+    drag.lane = lane;
+    if (!lane) return;
+    lane.classList.add("over");
+
+    const others = [...lane.children].filter((c) => c !== drag.el);
+    let before = null;
+    for (const c of others) {
+      const r = c.getBoundingClientRect();
+      if (e.clientY < r.top || (e.clientY <= r.bottom && e.clientX < r.left + r.width / 2)) { before = c; break; }
+    }
+    if (before) { if (drag.el.nextSibling !== before) lane.insertBefore(drag.el, before); }
+    else if (lane.lastElementChild !== drag.el) lane.append(drag.el);
+  }
+  function endDrag(e) {
+    const el = drag.el;
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", endDrag);
+    window.removeEventListener("pointercancel", endDrag);
+    if (drag.ghost) {
+      drag.ghost.remove();
+      el.classList.remove("placeholder");
+      if (drag.lane) drag.lane.classList.remove("over");
+      save(); update();
+    } else if (e.type === "pointerup") {
+      select(el);
+    }
+    drag = null;
+  }
+
+  document.getElementById("reset").addEventListener("click", () => {
+    for (const [abbr] of TEAMS) pool.append(chips[abbr]);
+    if (selected) { selected.classList.remove("selected"); selected = null; }
+    save(); update();
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
