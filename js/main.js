@@ -262,8 +262,9 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.p
 on('levelUp', () => { if (G.player) saveChar(G.player); });
 on('questComplete', () => { if (G.player) saveChar(G.player); });
 
-// PWA: cache the game for offline play where service workers are allowed.
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+// PWA: cache the game for offline play where service workers are allowed
+// (not when embedded in another page's frame).
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && window.self === window.top) {
   try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch { /* not allowed here */ }
 }
 
