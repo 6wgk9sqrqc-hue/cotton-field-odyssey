@@ -1,4 +1,4 @@
-// Questlines for Cottonvale, Whisperwood, Saltmarsh Fen, Ashen Ridge and the Hollow Spire.
+// Questlines for Goldmeadow, Whisperwood, Saltmarsh Fen, Ashen Ridge and the Hollow Spire.
 import { defItem, defArmor, defWeapon } from './items.js';
 
 export const QUESTS = {};
@@ -37,7 +37,7 @@ qi('vexmire_phylactery', 'Vexmire\'s Phylactery', 'shard');
 qi('kings_heart', 'Heart of the Hollow King', 'heart');
 
 // ---------- reward gear ----------
-// Cottonvale
+// Goldmeadow
 A('millbrook_gloves', 'Millbrook Field Gloves', 'hands', 'leather', 5, 1, { sta: 1 }, 0x7a5a3a);
 A('farmhand_sandals', 'Farmhand\'s Sandals', 'feet', 'cloth', 5, 1, { spi: 1 }, 0xb0a080);
 A('warden_bracers', 'Recruit Warden Bracers', 'wrist', 'mail', 5, 1, { str: 1 }, 0x8a8a90);
@@ -120,14 +120,14 @@ W('hollowbane', 'Hollowbane', 'sword', 25, 4, { agi: 9, sta: 7, crit: 1 }, 0xb09
 W('staff_of_first_light', 'Staff of the First Light', 'staff', 25, 4, { int: 14, spi: 10, sta: 6, sp: 12 }, 0xfff0c0, { glow: 0xfff0a0, bop: true });
 W('kings_bow', 'Bow of the Fallen King', 'bow', 25, 4, { agi: 10, sta: 7 }, 0x6a4a8a, { bop: true });
 
-// ================= COTTONVALE =================
+// ================= GOLDMEADOW =================
 Q({ id: 'cv_recruit', name: 'A Fresh Recruit', level: 1, minLevel: 1, giver: 'edda', turnin: 'tobias',
   text: 'So you\'re the new recruit the Wardens sent. Good. Millbrook needs every hand it can get.\n\nFarmer Tobias Hollin is waiting by his barn on the west side of town. His fields are being eaten alive and he needs someone with a strong arm. Go and introduce yourself.',
   obj: 'Speak with Farmer Tobias Hollin in Millbrook.', done: 'Ah, Edda sent you? Bless her. Pull up a hay bale, we have work to do.',
   goals: [], reward: { xpMult: 0.4 } });
 Q({ id: 'cv_weevils', name: 'The Weevil Problem', level: 1, minLevel: 1, giver: 'tobias', prev: 'cv_recruit',
-  text: 'See those fields north of town? The Gnawed Acres, we call them now. Cotton Weevils the size of dogs have been chewing through my crop since spring.\n\nKill 8 of the blasted things before they eat what\'s left of the harvest.',
-  obj: 'Kill 8 Cotton Weevils in the Gnawed Acres north of Millbrook.', done: 'You\'ve got weevil guts on your boots. That\'s the smell of honest work!',
+  text: 'See those fields north of town? The Gnawed Acres, we call them now. Grain Weevils the size of dogs have been chewing through my wheat since spring.\n\nKill 8 of the blasted things before they eat what\'s left of the harvest.',
+  obj: 'Kill 8 Grain Weevils in the Gnawed Acres north of Millbrook.', done: 'You\'ve got weevil guts on your boots. That\'s the smell of honest work!',
   goals: [{ kind: 'kill', mob: 'cotton_weevil', n: 8 }], reward: { choice: ['millbrook_gloves', 'farmhand_sandals', 'warden_bracers'] } });
 Q({ id: 'cv_rats', name: 'Vermin in the Cellar', level: 1, minLevel: 1, giver: 'rosie',
   text: 'Bristle Rats! In my cellar, in my flour, in my good boots! They come up from the fields west and south of town.\n\nClear out 6 of them and the first round is on me.',
@@ -146,7 +146,7 @@ Q({ id: 'cv_coyotes', name: 'Dustfang Menace', level: 3, giver: 'edda', prev: 'c
   obj: 'Kill 8 Dustfang Coyotes.', done: 'The carters will sleep easier. Well done, recruit.',
   goals: [{ kind: 'kill', mob: 'dustfang_coyote', n: 8 }], reward: { choice: ['coyote_vest', 'militia_hauberk', 'harvest_robe'] } });
 Q({ id: 'cv_crabs', name: 'Tidecrawler Claws', level: 3, giver: 'petri',
-  text: 'Nothing beats boiled tidecrawler claw with a pinch of salt. But my knees aren\'t what they were, and those crabs pinch back.\n\nWalk the sands of the Cotton Coast and bring me 5 Tidecrawler Claws.',
+  text: 'Nothing beats boiled tidecrawler claw with a pinch of salt. But my knees aren\'t what they were, and those crabs pinch back.\n\nWalk the sands of the Gullsand Coast and bring me 5 Tidecrawler Claws.',
   obj: 'Bring 5 Tidecrawler Claws to Old Petri at the Millbrook dock.', done: 'Ha! Supper is served. Take this old trinket, it\'s brought me luck.',
   goals: [{ kind: 'item', item: 'tidecrawler_claw', n: 5, from: ['tidecrawler'], chance: 0.65 }], reward: { choice: ['coastline_dirk', 'kelpwoven_cloak', 'petri_ring'] } });
 Q({ id: 'cv_sweetroot', name: 'Sweetroot for the Stew', level: 3, giver: 'rosie',

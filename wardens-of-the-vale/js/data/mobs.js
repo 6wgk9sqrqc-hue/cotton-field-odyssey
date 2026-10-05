@@ -8,10 +8,10 @@ const ogre = (o = {}) => ({ t: 'human', skin: 0x9a7a6a, headColor: 0x9a7a6a, shi
 const skeleton = (o = {}) => ({ t: 'human', skin: 0xe8e0c8, headColor: 0xe8e0c8, shirt: 0xd8d0b8, pants: 0xd8d0b8, boots: 0xc8c0a8, bareArms: true, bulk: 0.7, armBulk: 0.6, eyes: 0x60c0ff, belt: 0x4a3a2a, ...o });
 
 export const MOBS = {
-  // ---------------- Cottonvale ----------------
+  // ---------------- Goldmeadow ----------------
   bristle_rat: { name: 'Bristle Rat', creature: 'beast', family: 'rat', levels: [1, 2], faction: 'neutral', radius: 0.4, hp: 0.8, dmg: 0.8,
     m: { t: 'quad', color: 0x6a5a50, length: 0.8, legLen: 0.25, width: 0.35, bodyH: 0.3, headSize: 0.26, snout: 0.18, tailLen: 0.7, tailW: 0.04, tailColor: 0xc89a8a, scale: 0.75 }, junk: ['rat_tail'] },
-  cotton_weevil: { name: 'Cotton Weevil', creature: 'beast', family: 'insect', levels: [1, 3], radius: 0.6, hp: 0.9, dmg: 0.85,
+  cotton_weevil: { name: 'Grain Weevil', creature: 'beast', family: 'insect', levels: [1, 3], radius: 0.6, hp: 0.9, dmg: 0.85,
     m: { t: 'insect', color: 0x5a4a32, headColor: 0x6a5a40, shine: 0x9a8a6a, scale: 1.0 }, junk: ['cracked_shell'], social: 8, tameable: false },
   tidecrawler: { name: 'Tidecrawler', creature: 'beast', family: 'crab', levels: [2, 4], radius: 0.7, hp: 1.0, armor: 1.4,
     m: { t: 'crab', color: 0xc0603a, scale: 1.1 }, junk: ['crab_leg'] },

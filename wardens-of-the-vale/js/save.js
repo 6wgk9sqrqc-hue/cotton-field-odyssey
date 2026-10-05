@@ -2,8 +2,8 @@
 // unavailable (private windows, embedded viewers) and the game must still run.
 import { G } from './state.js';
 
-const INDEX = 'cfo_chars_v1';
-const KEY = (id) => 'cfo_char_' + id;
+const INDEX = 'wov_chars_v1';
+const KEY = (id) => 'wov_char_' + id;
 let memory = {}; // fallback when storage is blocked
 
 function read(k) {
@@ -19,6 +19,23 @@ function remove(k) {
   try { localStorage.removeItem(k); } catch { /* storage blocked */ }
 }
 
+// Characters made before the game had its own name were saved under 'cfo_'
+// keys. Copy them across once so nobody loses a character.
+function migrateOldSaves() {
+  try {
+    if (localStorage.getItem(INDEX) !== null) return;
+    const old = JSON.parse(localStorage.getItem('cfo_chars_v1') ?? 'null');
+    if (!old?.chars?.length) return;
+    for (const c of old.chars) {
+      const data = localStorage.getItem('cfo_char_' + c.id);
+      if (data !== null) localStorage.setItem(KEY(c.id), data);
+      c.zone = (c.zone ?? '').replace('Cottonvale', 'Goldmeadow').replace('Cotton Coast', 'Gullsand Coast');
+    }
+    localStorage.setItem(INDEX, JSON.stringify(old));
+  } catch { /* storage blocked */ }
+}
+migrateOldSaves();
+
 export function listChars() { return read(INDEX)?.chars ?? []; }
 export function lastCharId() { return read(INDEX)?.last ?? null; }
 export function loadChar(id) { return read(KEY(id)); }
@@ -29,7 +46,7 @@ export function deleteChar(id) {
   remove(KEY(id));
 }
 export function storageWorks() {
-  try { localStorage.setItem('cfo_probe', '1'); localStorage.removeItem('cfo_probe'); return true; } catch { return false; }
+  try { localStorage.setItem('wov_probe', '1'); localStorage.removeItem('wov_probe'); return true; } catch { return false; }
 }
 
 export function serialize(p) {

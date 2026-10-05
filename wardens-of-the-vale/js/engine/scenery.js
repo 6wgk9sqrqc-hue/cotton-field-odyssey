@@ -49,6 +49,8 @@ export function mergeParts(parts) {
 
 const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const C = (rt, rb, h, s = 8) => new THREE.CylinderGeometry(rt, rb, h, s);
+// open tube for thin stalks, whose end caps are never seen
+const T = (rt, rb, h, s = 3) => new THREE.CylinderGeometry(rt, rb, h, s, 1, true);
 const K = (r, h, s = 8) => new THREE.ConeGeometry(r, h, s);
 const I = (r, d = 0) => new THREE.IcosahedronGeometry(r, d);
 const D = (r) => new THREE.DodecahedronGeometry(r, 0);
@@ -144,24 +146,20 @@ const PROPS = {
     { g: C(0.06, 0.08, 0.4, 5), c: 0xe0d8c0, p: [0.4, 0.2, 0.2] },
     { g: S(0.24, 7, 4), c: 0x9a5ac0, p: [0.4, 0.42, 0.2], s: [1, 0.5, 1] },
   ]),
-  cotton: () => mergeParts([
-    { g: C(0.04, 0.05, 0.9, 3), c: 0x4f6a2a, p: [0, 0.45, 0] },
-    { g: O(0.3), c: 0x4a7a30, p: [0, 0.6, 0], s: [1, 0.55, 1] },
-    { g: O(0.15), c: 0xf8f6ee, p: [0.17, 0.9, 0.05] },
-    { g: O(0.14), c: 0xf4f2ea, p: [-0.15, 0.84, 0.08] },
-    { g: O(0.14), c: 0xfaf8f2, p: [0.0, 1.02, -0.13] },
-  ]),
   blighted: () => mergeParts([
     { g: C(0.04, 0.05, 0.8, 3), c: 0x4a4038, p: [0, 0.4, 0], r: [0.2, 0, 0.2] },
     { g: O(0.22), c: 0x5a5048, p: [0.05, 0.6, 0], s: [1, 0.5, 1] },
     { g: O(0.11), c: 0x8a8070, p: [0.12, 0.75, 0.05] },
   ]),
   wheat: () => mergeParts([
-    { g: C(0.02, 0.03, 1.1, 3), c: 0xc8a850, p: [0, 0.55, 0] },
-    { g: C(0.02, 0.03, 1.0, 3), c: 0xd0b058, p: [0.15, 0.5, 0.1], r: [0, 0, -0.1] },
-    { g: C(0.02, 0.03, 1.05, 3), c: 0xc0a048, p: [-0.12, 0.52, -0.08], r: [0.1, 0, 0.1] },
-    { g: B(0.07, 0.25, 0.07), c: 0xe0c060, p: [0, 1.15, 0] },
-    { g: B(0.07, 0.22, 0.07), c: 0xe0c060, p: [0.2, 1.05, 0.1] },
+    { g: T(0.018, 0.028, 1.05, 3), c: 0xb89a48, p: [0, 0.52, 0] },
+    { g: T(0.018, 0.028, 0.95, 3), c: 0xc4a450, p: [0.26, 0.47, 0.08], r: [0, 0, -0.14] },
+    { g: T(0.018, 0.028, 1.0, 3), c: 0xb09040, p: [-0.24, 0.5, -0.1], r: [0.1, 0, 0.14] },
+    { g: T(0.018, 0.028, 0.9, 3), c: 0xc0a04c, p: [0.06, 0.45, 0.27], r: [0.16, 0, 0] },
+    { g: O(0.08), c: 0xe8c860, p: [0, 1.18, 0], s: [0.8, 2.6, 0.8] },
+    { g: O(0.08), c: 0xf0d070, p: [0.345, 1.08, 0.08], s: [0.8, 2.5, 0.8], r: [0, 0, -0.14] },
+    { g: O(0.08), c: 0xe0c058, p: [-0.33, 1.13, -0.04], s: [0.8, 2.5, 0.8], r: [0.1, 0, 0.14] },
+    { g: O(0.08), c: 0xecc868, p: [0.06, 1.03, 0.36], s: [0.8, 2.4, 0.8], r: [0.16, 0, 0] },
   ]),
   grass: () => mergeParts([
     { g: K(0.12, 0.6, 3), c: 0x6a9a40, p: [0, 0.3, 0] },
@@ -261,7 +259,7 @@ export function buildScenery(scene) {
   }
   // crops in rows
   for (const f of FIELDS) {
-    const type = f.kind === 'blighted' ? 'blighted' : f.kind === 'wheat' ? 'wheat' : 'cotton';
+    const type = f.kind === 'blighted' ? 'blighted' : 'wheat';
     const c = Math.cos(f.rot), s = Math.sin(f.rot);
     for (let lz = -f.d / 2 + 1.5; lz < f.d / 2 - 1; lz += 2.8) {
       for (let lx = -f.w / 2 + 1.2; lx < f.w / 2 - 1; lx += 1.9) {

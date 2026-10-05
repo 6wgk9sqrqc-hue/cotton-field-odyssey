@@ -1,4 +1,4 @@
-# Cotton Field Odyssey
+# Wardens of the Vale
 
 A classic-style fantasy RPG that runs in the browser (desktop and mobile) and installs as a PWA.
 It plays like the original 2004 MMO formula: the same nine classes and their mechanics,
@@ -6,9 +6,10 @@ on an original map with original quests, played solo with optional hired compani
 
 ## Play
 
-Any static web server works. From the repo root:
+Any static web server works. Serve this folder:
 
 ```sh
+cd wardens-of-the-vale
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
@@ -67,7 +68,7 @@ item quality tiers with random "of the Bear/Eagle/Monkey…" greens, durability 
 vendors with buyback, death, ghost corpse runs and the spirit healer, hearthstones, inns and
 flight paths, falling damage, and an elite dungeon.
 
-**World**: Cottonvale (levels 1–6), Whisperwood (6–12), Saltmarsh Fen (12–16), Ashen Ridge
+**World**: Goldmeadow (levels 1–6), Whisperwood (6–12), Saltmarsh Fen (12–16), Ashen Ridge
 (16–20) and the Hollow Spire dungeon, with about 45 quests, named bosses, rare spawns and four
 towns. Hire a tank, a healer and damage dealers at the Spire Gate camp for the dungeon.
 

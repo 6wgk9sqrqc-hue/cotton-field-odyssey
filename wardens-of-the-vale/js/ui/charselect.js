@@ -28,14 +28,14 @@ function render() {
   const chars = listChars();
   const C = CLASSES[creating.cls];
   $('startScreen').innerHTML = `<div class="ss-wrap">
-    <div class="ss-head"><h1>Cotton Field Odyssey</h1><p>A classic adventure across the Vale. Nine classes. Four zones. One Hollow King.</p></div>
+    <div class="ss-head"><h1>Wardens of the Vale</h1><p>A classic adventure across the Vale. Nine classes. Four zones. One Hollow King.</p></div>
     <div class="ss-cols${chars.length ? '' : ' no-chars'}">
       <section class="ss-section panel">
         <h2>Your Characters</h2>
         ${chars.length ? `<div class="char-list">${chars.map((c) => `<div class="char-row ${c.id === sel ? 'sel' : ''}" data-id="${c.id}" tabindex="0"><img alt="" src="${classIcon(c.cls)}"><div class="meta"><div class="nm" style="color:${CLASSES[c.cls].color}">${escapeHTML(c.name)}</div><div class="sub">Level ${c.level} ${CLASSES[c.cls].name}${c.zone ? ' · ' + escapeHTML(c.zone) : ''}</div></div></div>`).join('')}</div>
         <div class="ss-actions"><button class="btn" id="ssPlay" ${sel ? '' : 'disabled'}>Enter World</button><button class="btn ghosty small" id="ssDelete" ${sel ? '' : 'disabled'}>Delete</button></div>
         ${confirmDel && sel ? `<div class="confirm-del">Delete ${escapeHTML(chars.find((c) => c.id === sel)?.name ?? '')} forever?<div class="ss-actions"><button class="btn small" id="ssDelYes">Delete</button><button class="btn small ghosty" id="ssDelNo">Keep</button></div></div>` : ''}`
-          : '<p class="ss-help">No characters yet. Create one to begin your odyssey in Millbrook, a farming town in Cottonvale.</p>'}
+          : '<p class="ss-help">No characters yet. Create one to begin your journey in Millbrook, a farming town in Goldmeadow.</p>'}
         ${storageWorks() ? '' : '<p class="ss-help" style="color:#ffb060">Your browser is blocking saved data here, so progress lasts only until you close this page.</p>'}
         <div class="ss-help" style="margin-top:14px">
           <b>Keyboard:</b> <kbd>WASD</kbd> move, mouse to look, <kbd>Tab</kbd> target, <kbd>1</kbd>–<kbd>=</kbd> abilities, right-click to attack or talk.<br>

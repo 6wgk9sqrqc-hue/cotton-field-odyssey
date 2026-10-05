@@ -269,7 +269,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http') && wind
 }
 
 // handle for automated tests and the browser console
-window.__cfo = { G };
+window.__wov = { G };
 boot().catch((e) => {
   console.error(e);
   $('loadText').textContent = 'Something went wrong while loading: ' + e.message;

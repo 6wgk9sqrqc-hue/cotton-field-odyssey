@@ -93,7 +93,7 @@ defArmor('novice_leather_vest', "Novice's Leather Vest", 'chest', 'leather', 2, 
 const food = (id, name, lvl, hp, price, icon = 'meat') => defItem(id, name, { type: 'food', stack: 20, req: lvl, use: { food: hp, dur: 18 }, price, icon });
 const drink = (id, name, lvl, mana, price) => defItem(id, name, { type: 'drink', stack: 20, req: lvl, use: { drink: mana, dur: 18 }, price, icon: 'drink' });
 food('tough_jerky', 'Tough Jerky', 1, 61, 6);
-food('cottonvale_bread', 'Cottonvale Rye', 1, 61, 6, 'bread');
+food('cottonvale_bread', 'Goldmeadow Rye', 1, 61, 6, 'bread');
 food('haunch_of_meat', 'Haunch of Meat', 5, 243, 25);
 food('honey_bun', 'Honey Bun', 5, 243, 25, 'bread');
 food('mutton_chop', 'Mutton Chop', 15, 552, 50);

@@ -4,7 +4,7 @@ export const WATER_LEVEL = 0;
 
 export const ZONES = {
   cottonvale: {
-    id: 'cottonvale', name: 'Cottonvale', levels: [1, 6], center: { x: 0, z: 330 },
+    id: 'cottonvale', name: 'Goldmeadow', levels: [1, 6], center: { x: 0, z: 330 },
     fog: 0xc9dcec, sky: 0x8fbce6, ground: 0x7fa54a, ground2: 0xa7b45a, rock: 0x8b8072,
     music: 'pastoral',
   },
@@ -69,13 +69,13 @@ export const LAVA = [
   { x: 40, z: -230, r: 12, level: 18 },
 ];
 
-// Cotton fields: flattened rectangles planted in rows.
+// Wheat fields: flattened rectangles planted in rows.
 export const FIELDS = [
-  { x: 85, z: 210, w: 70, d: 46, rot: 0.08, kind: 'cotton' },
-  { x: -70, z: 300, w: 60, d: 60, rot: -0.1, kind: 'cotton' },
+  { x: 85, z: 210, w: 70, d: 46, rot: 0.08, kind: 'wheat' },
+  { x: -70, z: 300, w: 60, d: 60, rot: -0.1, kind: 'wheat' },
   { x: -75, z: 200, w: 80, d: 56, rot: 0.25, kind: 'weevil' },
   { x: 175, z: 375, w: 76, d: 44, rot: 0.0, kind: 'blighted' },
-  { x: 0, z: 410, w: 64, d: 40, rot: -0.05, kind: 'cotton' },
+  { x: 0, z: 410, w: 64, d: 40, rot: -0.05, kind: 'wheat' },
   { x: 140, z: 150, w: 50, d: 40, rot: 0.3, kind: 'wheat' },
 ];
 
@@ -93,7 +93,7 @@ export const SUBZONES = [
   { id: 'hargrove', name: 'Hargrove Farm', x: 175, z: 345, r: 45 },
   { id: 'banditcamp', name: 'Burlap Hollow', x: -140, z: 395, r: 35 },
   { id: 'weevilfield', name: 'The Gnawed Acres', x: -75, z: 200, r: 45 },
-  { id: 'cottoncoast', name: 'Cotton Coast', x: 60, z: 510, r: 70 },
+  { id: 'cottoncoast', name: 'Gullsand Coast', x: 60, z: 510, r: 70 },
   { id: 'millpond', name: 'Millpond', x: 115, z: 240, r: 35 },
   { id: 'thornhaven', name: 'Thornhaven', x: -330, z: 30, r: 40 },
   { id: 'witchgrove', name: 'Witchgrove', x: -470, z: -110, r: 45 },
@@ -110,7 +110,7 @@ export const SUBZONES = [
 ];
 
 export const FLIGHT_POINTS = [
-  { id: 'fp_millbrook', name: 'Millbrook, Cottonvale', x: 70, z: 285 },
+  { id: 'fp_millbrook', name: 'Millbrook, Goldmeadow', x: 70, z: 285 },
   { id: 'fp_thornhaven', name: 'Thornhaven, Whisperwood', x: -310, z: 50 },
   { id: 'fp_brinewater', name: 'Brinewater, Saltmarsh Fen', x: 380, z: 80 },
   { id: 'fp_dawnwatch', name: 'Dawnwatch Keep, Ashen Ridge', x: -40, z: -280 },

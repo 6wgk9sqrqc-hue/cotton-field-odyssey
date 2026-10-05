@@ -1,7 +1,7 @@
 // Creature spawn areas and interactable objects.
 // { tpl, x, z, r (area radius), n (count), wander, respawn (sec) }
 export const SPAWNS = [
-  // Cottonvale
+  // Goldmeadow
   { tpl: 'bristle_rat', x: 70, z: 240, r: 26, n: 6 },
   { tpl: 'bristle_rat', x: -30, z: 330, r: 18, n: 4 },
   { tpl: 'bristle_rat', x: 0, z: 375, r: 24, n: 5 },

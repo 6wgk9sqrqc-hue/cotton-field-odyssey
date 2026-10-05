@@ -17,7 +17,7 @@ export const NPCS = [
     gossip: 'The harvest won\'t gather itself, recruit, and neither will the Vale defend itself. Speak quickly.' },
   { id: 'tobias', name: 'Farmer Tobias Hollin', x: -4, z: 300, facing: 1.6, quests: true,
     m: look(2, 1, { shirt: 0x9a8a5a, pants: 0x5a6a8a, helm: { type: 'strawhat', color: 0xd8b860 } }),
-    gossip: 'Weevils in the cotton, bandits in the barn, and blight in the Hargrove fields. Some years I wonder why I bother.' },
+    gossip: 'Weevils in the wheat, bandits in the barn, and blight in the Hargrove fields. Some years I wonder why I bother.' },
   { id: 'wilm', name: 'Old Wilm Hargrove', x: 58, z: 278, facing: -1.6, quests: true,
     m: look(0, 5, { shirt: 0x6a5a4a, pants: 0x4a4a3a, beard: 0xe8e8e8, hunch: 0.2 }),
     gossip: 'Forty years I worked that farm. Forty years. Then the scarecrows got up and walked.' },
