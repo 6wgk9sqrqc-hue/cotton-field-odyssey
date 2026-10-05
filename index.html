@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Cotton Field Odyssey</title>
+<meta name="description" content="A classic-style fantasy RPG in your browser: nine classes, talents, quests, dungeons.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#120d08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="photos/icon.png">
+<link rel="apple-touch-icon" href="photos/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Alegreya+Sans:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<!--BODY-->
+<canvas id="game" aria-label="Game world"></canvas>
+<div id="overlay"></div>
+
+<div id="hud" hidden>
+  <div id="frames">
+    <div id="playerFrame" class="uf player">
+      <div class="portrait"><img alt=""><span class="lvl"></span><span class="rest" title="Resting">zz</span></div>
+      <div class="uf-body">
+        <div class="uf-name"></div>
+        <div class="bar hp"><i></i><span></span></div>
+        <div class="bar pw"><i></i><span></span></div>
+      </div>
+      <div class="combo"></div>
+    </div>
+    <div id="targetFrame" class="uf target" hidden>
+      <div class="uf-body">
+        <div class="uf-name"></div>
+        <div class="bar hp"><i></i><span></span></div>
+        <div class="bar pw"><i></i><span></span></div>
+        <div class="tcast" hidden><i></i><span></span></div>
+      </div>
+      <div class="portrait"><img alt=""><span class="lvl"></span><span class="elite-tag"></span></div>
+      <div class="auras"></div>
+      <div class="tot" hidden><span class="tot-name"></span><div class="bar hp"><i></i></div></div>
+    </div>
+    <div id="petFrame" class="uf small" hidden>
+      <div class="portrait"><img alt=""></div>
+      <div class="uf-body"><div class="uf-name"></div><div class="bar hp"><i></i><span></span></div><div class="bar pw"><i></i></div></div>
+    </div>
+    <div id="partyFrames"></div>
+  </div>
+  <div id="buffs"></div>
+  <div id="mapCorner">
+    <div id="zoneName"></div>
+    <div id="minimapWrap"><canvas id="minimap" width="300" height="300"></canvas><div id="mmArrow"></div><div id="mmClock"></div></div>
+    <div id="mmButtons">
+      <button id="mmZoomIn" title="Zoom in" aria-label="Zoom minimap in">+</button>
+      <button id="mmZoomOut" title="Zoom out" aria-label="Zoom minimap out">−</button>
+    </div>
+  </div>
+  <div id="questTracker"></div>
+  <div id="castBar" hidden><i></i><span class="cname"></span><span class="ctime"></span></div>
+  <div id="mirrorBar" hidden></div>
+  <div id="bottom">
+    <div id="stanceBar"></div>
+    <div id="petBar"></div>
+    <div id="actionBar2" class="actionbar"></div>
+    <div id="actionBar" class="actionbar"></div>
+    <div id="xpBar"><b class="rested"></b><b class="fill"></b><span></span></div>
+  </div>
+  <div id="microMenu">
+    <button data-win="character" title="Character (C)">Char</button>
+    <button data-win="spellbook" title="Spellbook (P)">Spells</button>
+    <button data-win="talents" title="Talents (N)">Talents</button>
+    <button data-win="quests" title="Quest Log (L)">Quests</button>
+    <button data-win="map" title="World Map (M)">Map</button>
+    <button data-win="bags" title="Bags (B)">Bags</button>
+    <button data-win="menu" title="Game Menu (Esc)">Menu</button>
+  </div>
+  <div id="chat">
+    <div id="chatTabs"><button data-tab="all" class="on">General</button><button data-tab="combat">Combat Log</button><button id="chatHide" aria-label="Hide chat">×</button></div>
+    <div id="chatLog" role="log" aria-live="polite"></div>
+  </div>
+  <button id="chatShow" hidden>Chat</button>
+  <div id="errorText" aria-live="assertive"></div>
+  <div id="zoneText"><div class="big"></div><div class="sub"></div></div>
+  <div id="toasts"></div>
+  <div id="touchControls">
+    <button id="tcTarget" aria-label="Next target">⟳<small>Target</small></button>
+    <button id="tcInteract" aria-label="Interact or attack">✋<small>Use</small></button>
+    <button id="tcJump" aria-label="Jump">⤒<small>Jump</small></button>
+    <button id="tcPage" aria-label="Switch action page">⇅<small>Page</small></button>
+  </div>
+  <div id="deathPanel" class="panel center-panel" hidden>
+    <p>You have died.</p>
+    <button id="releaseBtn" class="btn">Release Spirit</button>
+  </div>
+  <div id="ghostPanel" class="panel" hidden>
+    <p id="ghostText">Return to your corpse to resurrect, or speak to the Spirit Healer.</p>
+    <button id="resBtn" class="btn" hidden>Resurrect</button>
+  </div>
+</div>
+
+<div id="windows"></div>
+<div id="tooltip" role="tooltip" hidden></div>
+<div id="cursorIcon" hidden></div>
+<div id="joystick"><div id="joyKnob"></div></div>
+
+<div id="startScreen" hidden></div>
+<div id="loading">
+  <div class="load-inner">
+    <h1>Cotton Field Odyssey</h1>
+    <p id="loadText">Waking the Vale…</p>
+    <div class="load-bar"><i id="loadFill"></i></div>
+  </div>
+</div>
+<!--/BODY-->
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
