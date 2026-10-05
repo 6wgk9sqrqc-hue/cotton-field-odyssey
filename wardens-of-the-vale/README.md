@@ -35,15 +35,22 @@ It can also be hosted on GitHub Pages, Netlify or similar. After the first load 
 | `C B P N L M` | character, bags, spellbook, talents, quest log, map |
 | `Esc` | close windows, clear target, game menu |
 
-On phones and tablets the screen switches to a touch layout:
+The game is built for phones (every device gets the touch layout):
 
-- Drag anywhere on the left side to move with a floating joystick, or tap the ground to walk there.
-- Drag on the right side to turn the camera; pinch to zoom.
-- The big round button attacks, talks, loots or uses whatever you have targeted or are standing
-  next to, and walks you over first if it is out of reach. Loot is picked up automatically.
-- Six abilities sit in two arcs around it; **Page** flips through four pages (both action bars).
-  Abilities used with nothing targeted pick the nearest enemy in front of you.
-- Hold an ability to move or clear it. The ☰ button opens every window; windows fill the screen.
+- **Move like in Roblox:** touch and drag anywhere on the left side; the stick moves you relative
+  to the camera and your character turns to face where it runs. Push it part way to walk slowly.
+- **Look:** drag on the right side to turn the camera, pinch to zoom. The camera stays where you
+  leave it.
+- **Jump:** the arrow button in the corner; hold it to keep hopping. Running into a fence or a
+  small rock hops over it automatically.
+- **Fight and interact:** the big button next to it attacks, talks, loots or uses whatever is in
+  front of you and walks you over first if it is out of reach. Loot is picked up automatically.
+- Six abilities sit in two arcs around the buttons; **Page** flips through four pages. Abilities
+  used with nothing targeted pick the nearest enemy. Hold one to move or clear it.
+- The ☰ button opens every window; windows fill the screen.
+
+On a computer, WASD moves the same way, the mouse drags the camera, and dragging on the left side
+with the mouse works as the stick.
 
 ## What is in the game
 
@@ -87,13 +94,20 @@ Everything is drawn with three.js and generated in code, with three quality leve
 
 | | Low | Medium | High |
 |---|---|---|---|
-| Sun shadows | off | 34-yard radius | 55-yard radius, soft |
+| Sun shadows | off | 32-yard radius | 46-yard radius, soft |
 | Grass carpet radius | 26 yd | 34 yd | 44 yd |
-| Bloom and vignette | off | off | on |
+| Surface relief on ground and buildings | off | on | on |
+| Wildflowers | off | some | full |
+| Bloom, vignette and color grading | off | off | on |
 
-All levels share the shader sky with drifting clouds, detail-textured terrain, water with depth,
-foam and sun glints, animated lava, wind in grass, crops and trees, plank, stone and shingle
-patterns on buildings, rim-lit characters and ambient particles per zone. Resolution scales
+The starting level comes from the phone's GPU (recent iPhones and Snapdragon, Exynos, Tensor and
+Dimensity flagships start on High). If frames stay slow even at the lowest resolution, the game
+drops one level for that session.
+
+All levels share the shader sky with drifting clouds and cloud shadows, detail-textured terrain,
+water with depth, foam and sun glints, animated lava, wind in grass, crops and trees, plank, stone
+and shingle patterns on buildings, rim-lit characters with drawn faces, and ambient particles per
+zone. Resolution scales
 down by itself when frames take too long and recovers when there is headroom.
 
 ## Code layout

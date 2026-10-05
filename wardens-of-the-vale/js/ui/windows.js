@@ -635,12 +635,12 @@ function renderMenu() {
     <div class="setting"><span>Graphics</span> <span class="seg">${['low', 'medium', 'high'].map((q) => `<button class="btn small ${G.quality === q ? '' : 'ghosty'}" data-q="${q}">${q.charAt(0).toUpperCase() + q.slice(1)}</button>`).join(' ')}</span></div>
     <p class="muted" style="margin:2px 0 8px;font-size:13px">High adds bloom, longer shadows and denser grass. Low turns shadows off for older phones. The resolution also adapts automatically when frames slow down.</p>
     <h4>Controls</h4>
-    <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move and turn, <kbd>Q</kbd>/<kbd>E</kbd> strafe, <kbd>Space</kbd> jump, <kbd>R</kbd> autorun, <kbd>X</kbd> sit.<br>
-    Hold the left mouse button to look around; hold the right mouse button to steer. Both buttons run forward. Scroll to zoom.<br>
-    Left-click to target, right-click to attack, talk, or loot. <kbd>Tab</kbd> cycles enemies, <kbd>F</kbd> interacts with your target or whatever is nearby.<br>
-    <kbd>1</kbd>–<kbd>=</kbd> action bar, <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>=</kbd> second bar.<br>
-    <kbd>C</kbd> character, <kbd>B</kbd> bags, <kbd>P</kbd> spellbook, <kbd>N</kbd> talents, <kbd>L</kbd> quest log, <kbd>M</kbd> map, <kbd>Esc</kbd> menu.</p>
-    <p>On a touch screen: drag on the left side to move or tap the ground to walk there; drag on the right to turn the camera, pinch to zoom. Tap a creature to target it. The big round button attacks, talks, loots or uses whatever is in front of you and walks you over if it is out of reach. Abilities sit in the arc around it; Page shows the next set. Hold an ability to move or clear it. Abilities with no target pick the nearest enemy.</p>
+    <p><b>Move:</b> touch and drag anywhere on the left side, Roblox style. The stick moves you relative to the camera; push it part way to walk slowly.<br>
+    <b>Look:</b> drag on the right side to turn the camera, pinch to zoom.<br>
+    <b>Jump:</b> the arrow button; hold it to keep hopping. Running into a fence or small rock hops over it.<br>
+    <b>Act:</b> the big button attacks, talks, loots or uses what is in front of you, walking you over if needed. Abilities sit around it; Page shows the next set; hold one to move or clear it. Abilities with nothing targeted pick the nearest enemy.<br>
+    Tap a creature or person to target it; tap the target's frame to clear it.</p>
+    <p class="muted" style="font-size:13px">With a keyboard: WASD moves the same way, Space jumps, Tab cycles targets, 1–= use abilities, C B P N L M open windows, Esc opens this menu.</p>
     <h4>Tips</h4>
     <p>Eat and drink out of combat to recover. Mana only regenerates after 5 seconds without spending it. Speak to an innkeeper to set your Hearthstone and to earn rested experience. Visit your class trainer every couple of levels. Talents unlock at level 10.</p>
   </div>`;

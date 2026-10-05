@@ -82,6 +82,18 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 .class-pick img { width: 44px; height: 44px; border-radius: 6px; }
 .class-pick span { font-family: var(--display); font-size: 14px; }
 .class-pick.sel { border-color: var(--gold); box-shadow: 0 0 12px rgba(226, 184, 90, 0.35); }
+/* phones held sideways: one column, creation first, compact header and class grid */
+@media (max-height: 500px) {
+  .ss-cols { grid-template-columns: minmax(0, 1fr); }
+  .ss-cols.no-chars .ss-create { order: -1; }
+  #startScreen .ss-head h1 { font-size: 30px; margin: 0 0 2px; }
+  .ss-head p { font-size: 13px; margin-bottom: 8px; }
+}
+@media (max-height: 500px) and (min-width: 600px) {
+  .class-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .class-pick { padding: 5px 4px; }
+  .class-pick img { width: 34px; height: 34px; }
+}
 .class-info { margin-top: 12px; padding: 10px 12px; border-left: 3px solid var(--gold-dim); background: rgba(0, 0, 0, 0.3); }
 .class-info h3 { margin: 0 0 4px; font-family: var(--display); font-weight: 400; font-size: 20px; }
 .class-info p { margin: 4px 0; line-height: 1.45; max-width: 65ch; }

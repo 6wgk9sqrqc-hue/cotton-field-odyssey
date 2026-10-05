@@ -38,8 +38,9 @@ function render() {
           : '<p class="ss-help">No characters yet. Create one to begin your journey in Millbrook, a farming town in Goldmeadow.</p>'}
         ${storageWorks() ? '' : '<p class="ss-help" style="color:#ffb060">Your browser is blocking saved data here, so progress lasts only until you close this page.</p>'}
         <div class="ss-help" style="margin-top:14px">
-          <b>Keyboard:</b> <kbd>WASD</kbd> move, mouse to look, <kbd>Tab</kbd> target, <kbd>1</kbd>–<kbd>=</kbd> abilities, right-click to attack or talk.<br>
-          <b>Touch:</b> left thumb moves, right thumb turns the camera, tap to target, tap again to interact.
+          <b>Left thumb:</b> touch and drag anywhere on the left to walk, Roblox style.<br>
+          <b>Right side:</b> drag to look around, pinch to zoom, tap a creature or person to target it.<br>
+          <b>Buttons:</b> the arrow jumps (hold to keep hopping), the big button attacks, talks or loots, and your abilities sit around them.
         </div>
       </section>
       <section class="ss-section panel ss-create">
