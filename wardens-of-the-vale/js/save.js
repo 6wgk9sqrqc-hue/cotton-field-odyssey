@@ -58,7 +58,7 @@ export function serialize(p) {
     inDungeon: p.pos.x > 950, bind: p.bind, hp: p.dead || p.ghost ? 0 : Math.round(p.hp), mana: Math.round(p.mana), deadOnSave: !!(p.dead || p.ghost),
     bags: p.bags, equip: p.equip, spells: p.spells, talents: p.talents, bar: p.bar, bar2: p.bar2,
     quests: p.quests, explored: p.explored, flightPoints: p.flightPoints, untracked: p.untracked ?? {},
-    data: { petInfo: p.data.petInfo, petDead: p.data.petDead, demonNames: p.data.demonNames, lastDemon: p.data.lastDemon },
+    data: { petInfo: p.data.petInfo, petDead: p.data.petDead, demonNames: p.data.demonNames, lastDemon: p.data.lastDemon, tutorial: p.data.tutorial },
     petOut: !!p.pet && !p.pet.dead, demonOut: p.pet?.data?.demon ?? null, party: G.party.map((c) => c.hireId),
     cooldowns: cds, settings: G.settings, played: (p.played ?? 0) + (G.time - (p.sessionStart ?? 0)),
   };

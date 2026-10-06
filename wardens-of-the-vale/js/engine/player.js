@@ -3,7 +3,7 @@ import * as THREE from '../lib/three.module.min.js';
 import { G, emit, on } from '../state.js';
 import { clamp, normAngle, lerp } from '../util.js';
 import { heightAt } from './terrain.js';
-import { inDungeon } from './collision.js';
+import { inDungeon, blockedPoint } from './collision.js';
 import { canAttack, distance, friendly, rangeTo, inMeleeRange } from './combat.js';
 import { castAbility, ABILITIES, knownRank } from './spells.js';
 import { updateDash } from './summons.js';
@@ -411,7 +411,9 @@ export function updatePlayer(dt) {
     } else if (!p.cast || p.cast.ability?.castWhileMoving) {
       const tx = a.target.pos ? a.target.pos.x : a.target.x;
       const tz = a.target.pos ? a.target.pos.z : a.target.z;
-      const ang = Math.atan2(tx - p.pos.x, tz - p.pos.z);
+      let ang = Math.atan2(tx - p.pos.x, tz - p.pos.z);
+      // steer around whatever stands in the way (statues, wells, carts)
+      if (p._detour && G.time < p._detour.until) ang += p._detour.turn;
       mx = Math.sin(ang); mz = Math.cos(ang);
       p.facing = turnToward(p.facing, ang, dt * 14);
       speedMul = 1;
@@ -435,6 +437,11 @@ export function updatePlayer(dt) {
       p._blockedT = (p._blockedT ?? 0) + dt;
       if (p._blockedT > 0.12) { wantJump = true; p._blockedT = 0; }
     } else p._blockedT = 0;
+    // walking to something on its own and stuck: pick a way around
+    if (!manual && p.approach && !p.airborne && moved < sp * dt * 0.3) {
+      p._stuckT = (p._stuckT ?? 0) + dt;
+      if (p._stuckT > 0.2) { p._stuckT = 0; p._detour = detour(p, p._detour); }
+    } else if (!manual) p._stuckT = 0;
   } else p.moving = 0;
   if (wantJump && !p.airborne && !p.swimming && !rooted) {
     p.vy = JUMP_SPEED;
@@ -445,6 +452,21 @@ export function updatePlayer(dt) {
     if (p.cast) p.interruptCast();
   }
   input.jump = false;
+}
+// Try headings to either side of the target, widening until one is open,
+// and keep turning the same way if the last detour also ran into something.
+function detour(p, last) {
+  const t = p.approach.target;
+  const tx = t.pos ? t.pos.x : t.x, tz = t.pos ? t.pos.z : t.z;
+  const base = Math.atan2(tx - p.pos.x, tz - p.pos.z);
+  const prefer = last && G.time < last.until + 1 ? Math.sign(last.turn) : (Math.random() < 0.5 ? 1 : -1);
+  for (const amt of [0.8, 1.3, 1.8, 2.4]) {
+    for (const side of [prefer, -prefer]) {
+      const a = base + side * amt;
+      if (!blockedPoint(p.pos.x + Math.sin(a) * 1.3, p.pos.z + Math.cos(a) * 1.3, p.radius ?? 0.5)) return { turn: side * amt, until: G.time + 0.7 };
+    }
+  }
+  return { turn: prefer * 2.4, until: G.time + 0.7 };
 }
 function turnToward(cur, target, maxStep) {
   const d = normAngle(target - cur);

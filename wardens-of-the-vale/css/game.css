@@ -508,7 +508,64 @@ body.touch .btn.small { padding: 7px 12px; }
   body.touch #questTracker .qt-q:not(.focus) .qt-g { display: none; }
   body.touch #questTracker .qt-q { margin-bottom: 3px; }
 }
-}
-@media (max-height: 520px) { :root { --ui: 0.72; } #questTracker { top: 150px; max-height: 30vh; } #castBar { bottom: 110px; } }
 @media (max-width: 900px) and (min-height: 521px) { :root { --ui: 0.85; } }
 @media (prefers-reduced-motion: reduce) { #zoneText.show, .toast, #errorText div { animation-duration: 0.01s; } }
+
+/* ---------- tutorial ---------- */
+#tutDim { position: fixed; inset: 0; z-index: 29; pointer-events: none; background: radial-gradient(ellipse at 50% 48%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.62)); }
+#tutCard { position: fixed; z-index: 30; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 4px); transform: translateX(-50%); width: min(360px, calc(100vw - 24px)); padding: 11px 14px 6px; border: 1.5px solid var(--gold-dim); border-radius: 10px; background: rgba(16, 11, 6, 0.95); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); pointer-events: auto; touch-action: manipulation; }
+#tutCard.center { top: 50%; transform: translate(-50%, -50%); width: min(400px, calc(100vw - 32px)); padding: 20px 18px 16px; text-align: center; border-width: 2px; }
+#tutCard h3 { margin: 0 0 4px; font-family: var(--display); font-weight: 400; font-size: 19px; color: var(--gold); text-wrap: balance; }
+#tutCard.center h3 { font-size: 25px; margin-bottom: 8px; }
+#tutCard p { margin: 0; font-size: 14.5px; line-height: 1.42; color: var(--text); }
+.tut-step { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.tut-btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+#tutCard.center .tut-btns { justify-content: center; margin-top: 16px; }
+#tutCard.center .tut-btns .btn { font-size: 16px; padding: 9px 20px; }
+.tut-links { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.tut-links .btn { margin-left: auto; }
+.tut-links button { padding: 6px 2px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+#tutRing { position: fixed; z-index: 32; pointer-events: none; border: 3px solid #ffd24a; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.45), 0 0 18px 4px rgba(255, 210, 74, 0.6); animation: tutPulse 1.1s ease-in-out infinite; }
+#tutRing span { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; padding: 3px 10px; border-radius: 12px; background: #ffd24a; color: #1a1006; font-weight: 800; font-size: 14px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+#tutRing.below span { bottom: auto; top: calc(100% + 8px); }
+#tutMark { position: fixed; z-index: 12; pointer-events: none; transform: translate(-50%, -100%); display: grid; justify-items: center; gap: 2px; animation: tutBob 0.9s ease-in-out infinite; }
+#tutMark span { padding: 2px 9px; border-radius: 10px; background: #ffd24a; color: #1a1006; font-weight: 800; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+#tutMark svg { width: 26px; height: 26px; fill: #ffd24a; stroke: #1a1006; stroke-width: 1.5; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+#tutMark.off { transform: translate(-50%, -50%); animation: none; }
+#tutMark.off svg { transform: rotate(var(--rot)); }
+#tutHand { position: fixed; z-index: 12; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 32%, rgba(255, 255, 255, 0.28) 34% 60%, transparent 62%); }
+#tutHand.stick { animation: tutStick 2.4s ease-in-out infinite; }
+#tutHand.look { animation: tutSwipe 1.7s ease-in-out infinite; }
+@keyframes tutPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.07); opacity: 0.7; } }
+@keyframes tutBob { 0%, 100% { margin-top: 0; } 50% { margin-top: -9px; } }
+@keyframes tutStick { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(0, -42px); } 50% { transform: translate(38px, -8px); } 75% { transform: translate(-38px, -8px); } }
+@keyframes tutSwipe { 0% { transform: translateX(-64px); opacity: 0; } 15%, 85% { opacity: 1; } 100% { transform: translateX(64px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #tutRing, #tutMark { animation: none; } }
+
+/* held upright, windows rise from the bottom as sheets so the world stays in view */
+@media (orientation: portrait) {
+  body.touch .win { top: auto !important; bottom: 0; left: 0 !important; right: 0; max-width: none; max-height: calc(100% - max(8px, env(safe-area-inset-top)) - 60px) !important; border-radius: 14px 14px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  body.touch .win .win-h { border-radius: 14px 14px 0 0; }
+}
+/* with no characters yet, the name and Create button stay pinned in reach */
+@media (max-width: 760px) {
+  .ss-cols.no-chars .ss-create .name-row { position: sticky; bottom: calc(-1 * max(16px, env(safe-area-inset-bottom))); z-index: 2; margin: 14px -14px -14px; padding: 12px 14px max(14px, env(safe-area-inset-bottom)); border-top: 1px solid var(--edge); background: linear-gradient(rgba(23, 17, 11, 0.94), #17110b 40%); border-radius: 0 0 6px 6px; }
+}
+/* folded away, the card becomes a small help button on the left edge */
+#tutCard.compact { left: max(6px, env(safe-area-inset-left)); top: 42%; transform: none; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; border-color: #ffd24a; box-shadow: 0 0 12px rgba(255, 210, 74, 0.45), 0 3px 10px rgba(0, 0, 0, 0.6); }
+#tutCard.compact > * { display: none; }
+#tutCard.compact::after { content: '?'; font-family: var(--display); font-size: 22px; color: #ffd24a; }
+/* phones held sideways have little height: a narrower, tighter card */
+@media (orientation: landscape) and (max-height: 500px) {
+  #tutCard:not(.center) { width: min(300px, calc(100vw - 24px)); padding: 8px 12px 4px; }
+  #tutCard:not(.center) h3 { font-size: 17px; }
+  #tutCard:not(.center) p { font-size: 13.5px; line-height: 1.35; }
+  #tutCard.center { padding: 14px 16px 12px; }
+  #tutCard.center h3 { font-size: 21px; margin-bottom: 4px; }
+  #tutCard.center .tut-btns { margin-top: 10px; }
+}
+/* upright phones: keep the column of menu buttons on the right uncovered */
+@media (orientation: portrait) {
+  #tutCard:not(.center):not(.compact) { left: 10px; right: 56px; width: auto; transform: none; }
+}
+@media (max-width: 760px) { .ss-cols.no-chars .ss-create .name-row #ssCreate { flex: 1 1 100%; font-size: 18px; padding-block: 11px; } }

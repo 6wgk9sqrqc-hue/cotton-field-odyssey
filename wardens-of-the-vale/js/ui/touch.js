@@ -137,6 +137,9 @@ export function initTouchHud() {
   on('barChanged', () => { for (const s of slots) s.entry = undefined; });
 }
 
+// what sits in cluster slot k on the current page
+export function slotEntry(k) { return G.player ? entryAt(k) : null; }
+
 function setPage(n) {
   page = n;
   $('thPage').querySelector('b').textContent = String(page + 1);

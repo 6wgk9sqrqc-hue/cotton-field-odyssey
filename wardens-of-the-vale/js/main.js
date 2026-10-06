@@ -23,6 +23,7 @@ import { initWindows, toggle, closeAll, pickup, dropOnBar, slotMenu, openQuestLo
 import { initMaps } from './ui/minimap.js';
 import { initTouchHud, updateTouchHud } from './ui/touch.js';
 import { initQuestie, updateQuestie } from './ui/questie.js';
+import { initTutorial, startTutorial, stopTutorial, updateTutorial } from './ui/tutorial.js';
 import { initSfx } from './ui/sfx.js';
 import { showStart, hideStart } from './ui/charselect.js';
 import { saveChar, newSaveId, serialize } from './save.js';
@@ -60,12 +61,13 @@ async function boot() {
   G.dungeonWalkable = dungeonWalkable;
   G.ui = {
     cursor: null, vendorOpen: null, pickup, dropOnBar, slotMenu, entryTooltip, toggle, openQuestLog, setTarget,
-    modalOpen: () => !$('startScreen').hidden, logout,
+    modalOpen: () => !$('startScreen').hidden, logout, replayTutorial: () => startTutorial(true),
   };
   initHud();
   initTouchHud();
   initQuestie();
   initWindows();
+  initTutorial();
   initSfx();
   progress('Ready', 1);
   await nextFrame();
@@ -160,12 +162,14 @@ function enterWorld(o) {
     chat('Marshal Edda Brightfield, just ahead in the town square, has work for a new recruit. Look for the yellow ! above her head.', 'c-quest');
     saveChar(p);
   } else chat(`Welcome back, ${p.name}.`, 'c-sys');
+  startTutorial();
 }
 function logout() {
   const p = G.player;
   if (!p) return;
   saveChar(p);
   G.running = false;
+  stopTutorial();
   closeAll();
   clearCursor();
   clearInput();
@@ -270,6 +274,7 @@ function tick(dt) {
   updateHud(dt);
   updateTouchHud(dt);
   updateQuestie(dt);
+  updateTutorial(dt);
   saveT += dt;
   if (saveT > 15) { saveT = 0; saveChar(p); }
 }

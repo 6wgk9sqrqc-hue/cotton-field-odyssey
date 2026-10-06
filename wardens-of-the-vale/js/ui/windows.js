@@ -644,6 +644,7 @@ function renderMenu() {
     <div class="setting"><label><input type="checkbox" id="setSound" ${s.sound ? 'checked' : ''}> Sound effects</label></div>
     <div class="setting"><label for="setScale">Interface scale</label><input type="range" id="setScale" min="0.6" max="1.3" step="0.05" value="${s.uiScale ?? ''}"></div>
     <div class="setting"><span>Graphics</span> <span class="seg">${['low', 'medium', 'high'].map((q) => `<button class="btn small ${G.quality === q ? '' : 'ghosty'}" data-q="${q}">${q.charAt(0).toUpperCase() + q.slice(1)}</button>`).join(' ')}</span></div>
+    <div class="setting"><span>New to the game?</span> <button class="btn small ghosty" id="setTutorial">Replay tutorial</button></div>
     <p class="muted" style="margin:2px 0 8px;font-size:13px">High adds bloom, longer shadows and denser grass. Low turns shadows off for older phones. The resolution also adapts automatically when frames slow down.</p>
     <h4>Controls</h4>
     <p><b>Move:</b> touch and drag anywhere on the left side, Roblox style. The stick moves you relative to the camera; push it part way to walk slowly.<br>
@@ -656,6 +657,7 @@ function renderMenu() {
     <p>Eat and drink out of combat to recover. Mana only regenerates after 5 seconds without spending it. Speak to an innkeeper to set your Hearthstone and to earn rested experience. Visit your class trainer every couple of levels. Talents unlock at level 10.</p>
   </div>`;
   $('setNameplates').addEventListener('change', (e) => { s.nameplates = e.target.checked; });
+  $('setTutorial').addEventListener('click', () => { closeAll(); G.ui.replayTutorial?.(); });
   $('setAutoLoot').addEventListener('change', (e) => { s.autoLoot = e.target.checked; });
   $('setQuestie').addEventListener('change', (e) => { s.questie = e.target.checked; });
   $('setQuestArrow').addEventListener('change', (e) => { s.questArrow = e.target.checked; });

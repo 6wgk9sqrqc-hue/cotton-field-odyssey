@@ -44,14 +44,35 @@ The game is built for phones (every device gets the touch layout):
 - **Jump:** the arrow button in the corner; hold it to keep hopping. Running into a fence or a
   small rock hops over it automatically.
 - **Fight and interact:** the big button next to it attacks, talks, loots or uses whatever is in
-  front of you and walks you over first if it is out of reach. Loot is picked up automatically.
+  front of you and walks you over first, around statues and carts, if it is out of reach. Loot is
+  picked up automatically.
 - Six abilities sit in two arcs around the buttons; **Page** flips through four pages. Abilities
   used with nothing targeted pick the nearest enemy. Hold one to move or clear it.
-- The ☰ button opens every window; windows fill the screen.
+- The ☰ button opens every window. Held sideways, windows fill the screen; held upright, they rise
+  from the bottom as sheets so the world stays in view above them.
 
 Hold the phone either way: sideways or upright. Held upright, the frames stack on the left, the
 minimap and menu buttons sit on the right, and the thumb controls tighten up so the left half of the
-screen stays free for the stick.
+screen stays free for the stick. On the start screen the name box and Create & Play button stay
+pinned to the bottom so they are always in reach.
+
+### Tutorial
+
+Entering the world starts a short, hands-on tutorial (or offers it to characters made before it
+existed). Each step finishes when you do what it asks, so the game never pauses:
+
+1. Walk with the left thumb, then look around with the right.
+2. Jump.
+3. Talk to Marshal Edda (a marker floats over her) and accept her quest.
+4. Read the quest tracker, then follow the guide arrow to Farmer Tobias and turn the quest in.
+5. Take his next quest, target a Grain Weevil, attack it (casters are pointed at their spell) and
+   loot it.
+6. Find the quest log, bag and ☰ menu buttons.
+
+A gold ring highlights the button to press, a hand shows gestures, and a "Tap Accept" style label
+points at buttons inside dialogs. Skip a step, fold the tips away into a **?** button, or end the
+tutorial at any time; replay it from **Settings → Replay tutorial**. Progress is saved with the
+character.
 
 ### Questie
 
@@ -145,7 +166,7 @@ js/main.js                  boot, character creation, main loop
 js/engine/                  terrain, scenery, units, combat, spells, AI, quests, inventory, world
 js/engine/gfx.js, envshaders.js, post.js, grassfield.js, ambient.js, daynight.js   graphics: quality, shaders, post effects, grass, particles, time of day
 js/data/                    classes, abilities, talents, items, creatures, NPCs, spawns, quests
-js/ui/                      HUD, touch controls, windows, tooltips, icons, minimap, character select, sound
+js/ui/                      HUD, touch controls, windows, tooltips, icons, minimap, character select, sound, tutorial
 js/lib/three.module.min.js  three.js r170 (MIT)
 ```
 
