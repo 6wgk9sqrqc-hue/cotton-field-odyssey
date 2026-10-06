@@ -10,8 +10,9 @@ import { skyMaterial } from './envshaders.js';
 import { initPost, renderFrame, resizePost, setBloom } from './post.js';
 import { initAmbient, updateAmbient } from './ambient.js';
 import { initGrass, updateGrass, resetGrass } from './grassfield.js';
+import { advanceTime, skyState, initTime } from './daynight.js';
 
-let sky, sun, hemi, torchLight, glowSprites, fireSprites, terrain;
+let sky, sun, hemi, torchLight, glowSprites, glowMat, fireSprites, terrain;
 
 export function glowTexture() {
   const c = document.createElement('canvas');
@@ -29,22 +30,27 @@ export function glowTexture() {
 
 // Lighting mood per zone. Colors are blended when the player crosses a border.
 const ATMO = {
-  cottonvale: { sun: 0xfff1d8, sunI: 2.5, sky: 0xe4f0ff, ground: 0x6b5a3c, hemiI: 1.05, cloud: 0.42, cloudTint: 0xffffff, shallow: 0x46aaa2, deep: 0x14405a, rim: 0x9ab4d8 },
-  whisperwood: { sun: 0xffe6b8, sunI: 2.2, sky: 0xd0e8da, ground: 0x34452c, hemiI: 1.0, cloud: 0.55, cloudTint: 0xf2f6f0, shallow: 0x3c8c7a, deep: 0x103a3e, rim: 0x9ac8b0 },
-  saltmarsh: { sun: 0xf6ebc6, sunI: 2.0, sky: 0xd8e4cc, ground: 0x4a4a2e, hemiI: 1.05, cloud: 0.72, cloudTint: 0xe2e6da, shallow: 0x5e8058, deep: 0x22382a, rim: 0xb0c8a0 },
-  ashen: { sun: 0xffc48c, sunI: 2.1, sky: 0xf0d0bc, ground: 0x4a2c24, hemiI: 0.95, cloud: 0.88, cloudTint: 0x9a8680, shallow: 0x6e5a4e, deep: 0x2a1e1c, rim: 0xe0a080 },
-  spire: { sun: 0x8a78b0, sunI: 0.5, sky: 0xb0a0d8, ground: 0x2a2038, hemiI: 1.25, cloud: 0, cloudTint: 0x404040, shallow: 0x303040, deep: 0x101018, rim: 0x9070c0 },
+  cottonvale: { mist: 0.3, sun: 0xfff1d8, sunI: 2.5, sky: 0xe4f0ff, ground: 0x6b5a3c, hemiI: 1.05, cloud: 0.42, cloudTint: 0xffffff, shallow: 0x46aaa2, deep: 0x14405a, rim: 0x9ab4d8 },
+  whisperwood: { mist: 0.75, sun: 0xffe6b8, sunI: 2.2, sky: 0xd0e8da, ground: 0x34452c, hemiI: 1.0, cloud: 0.55, cloudTint: 0xf2f6f0, shallow: 0x3c8c7a, deep: 0x103a3e, rim: 0x9ac8b0 },
+  saltmarsh: { mist: 1.15, sun: 0xf6ebc6, sunI: 2.0, sky: 0xd8e4cc, ground: 0x4a4a2e, hemiI: 1.05, cloud: 0.72, cloudTint: 0xe2e6da, shallow: 0x5e8058, deep: 0x22382a, rim: 0xb0c8a0 },
+  ashen: { mist: 0.6, sun: 0xffc48c, sunI: 2.1, sky: 0xf0d0bc, ground: 0x4a2c24, hemiI: 0.95, cloud: 0.88, cloudTint: 0x9a8680, shallow: 0x6e5a4e, deep: 0x2a1e1c, rim: 0xe0a080 },
+  spire: { mist: 0, sun: 0x8a78b0, sunI: 0.5, sky: 0xb0a0d8, ground: 0x2a2038, hemiI: 1.25, cloud: 0, cloudTint: 0x404040, shallow: 0x303040, deep: 0x101018, rim: 0x9070c0 },
 };
 const cur = {
   fog: new THREE.Color(), sky: new THREE.Color(), sun: new THREE.Color(), hsky: new THREE.Color(), hground: new THREE.Color(),
   cloudTint: new THREE.Color(), shallow: new THREE.Color(), deep: new THREE.Color(), rim: new THREE.Color(),
-  sunI: 2.5, hemiI: 1, cloud: 0.4, near: 70, far: 260, torch: 0,
+  sunI: 2.5, hemiI: 1, cloud: 0.4, near: 70, far: 260, torch: 0, mist: 0.3,
 };
 const want = {
   fog: new THREE.Color(), sky: new THREE.Color(), sun: new THREE.Color(), hsky: new THREE.Color(), hground: new THREE.Color(),
   cloudTint: new THREE.Color(), shallow: new THREE.Color(), deep: new THREE.Color(), rim: new THREE.Color(),
-  sunI: 2.5, hemiI: 1, cloud: 0.4, near: 70, far: 260, torch: 0,
+  sunI: 2.5, hemiI: 1, cloud: 0.4, near: 70, far: 260, torch: 0, mist: 0.3,
 };
+// colors the hours of the day blend toward
+const DUSK_SUN = new THREE.Color(1.0, 0.52, 0.24), DUSK_FOG = new THREE.Color(0.95, 0.62, 0.48), DUSK_TOP = new THREE.Color(0.42, 0.42, 0.66);
+const NIGHT_FOG = new THREE.Color(0.045, 0.06, 0.11), NIGHT_TOP = new THREE.Color(0.012, 0.018, 0.05), NIGHT_SKY = new THREE.Color(0.32, 0.4, 0.7), NIGHT_GROUND = new THREE.Color(0.08, 0.08, 0.12);
+const MOON_COL = new THREE.Color(0.62, 0.72, 1.0), NIGHT_RIM = new THREE.Color(0.25, 0.32, 0.55);
+const _c1 = new THREE.Color(), _c2 = new THREE.Color();
 const SUN_DIR = new THREE.Vector3(0.48, 0.78, 0.4).normalize();
 
 export function initScene(canvas, onProgress) {
@@ -94,7 +100,7 @@ export function initScene(canvas, onProgress) {
   // lantern and torch glows as additive sprites
   const tex = glowTexture();
   G.glowTex = tex;
-  const smat = new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(0xffb060).multiplyScalar(0.9), opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  const smat = glowMat = new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(0xffb060).multiplyScalar(0.9), opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   glowSprites = new THREE.Group();
   for (const l of glowLights) {
     const s = new THREE.Sprite(smat);
@@ -120,6 +126,12 @@ export function initScene(canvas, onProgress) {
   initPost(renderer);
   setBloom(P.bloom);
   initAmbient(scene);
+  initTime();
+  // water has its own light: the sun by day, the moon at night
+  if (terrain.waterMat) {
+    terrain.waterMat.uniforms.uSunDir = { value: new THREE.Vector3().copy(SUN_DIR) };
+    terrain.waterMat.uniforms.uSunColor = { value: new THREE.Color(1, 1, 1) };
+  }
   window.addEventListener('resize', onResize);
   onResize();
   setZoneAtmosphere('cottonvale', true);
@@ -187,7 +199,7 @@ export function setZoneAtmosphere(zoneId, instant = false) {
   want.sun.setHex(a.sun); want.hsky.setHex(a.sky); want.hground.setHex(a.ground);
   want.cloudTint.setHex(a.cloudTint); want.shallow.setHex(a.shallow); want.deep.setHex(a.deep);
   want.rim.setHex(a.rim).multiplyScalar(0.3);
-  want.sunI = a.sunI; want.hemiI = a.hemiI; want.cloud = a.cloud;
+  want.sunI = a.sunI; want.hemiI = a.hemiI; want.cloud = a.cloud; want.mist = a.mist;
   want.torch = z.dungeon ? 3.2 : 0;
   if (z.dungeon) { want.near = 8; want.far = 70; } else if (zoneId === 'whisperwood') { want.near = 40; want.far = 210; } else if (zoneId === 'saltmarsh') { want.near = 30; want.far = 190; } else { want.near = 70; want.far = 260; }
   want.far *= preset().far;
@@ -195,7 +207,7 @@ export function setZoneAtmosphere(zoneId, instant = false) {
 }
 function blendAtmosphere(t) {
   for (const k of ['fog', 'sky', 'sun', 'hsky', 'hground', 'cloudTint', 'shallow', 'deep', 'rim']) cur[k].lerp(want[k], t);
-  for (const k of ['sunI', 'hemiI', 'cloud', 'near', 'far', 'torch']) cur[k] = lerp(cur[k], want[k], t);
+  for (const k of ['sunI', 'hemiI', 'cloud', 'near', 'far', 'torch', 'mist']) cur[k] = lerp(cur[k], want[k], t);
 }
 
 const _center = new THREE.Vector3();
@@ -203,24 +215,54 @@ const _right = new THREE.Vector3(), _up = new THREE.Vector3(), _fwd = new THREE.
 export function updateScene(dt) {
   const p = G.player;
   blendAtmosphere(Math.min(1, dt * 0.8));
+  advanceTime(dt);
   const scene = G.scene;
-  scene.fog.color.copy(cur.fog);
-  scene.fog.near = cur.near; scene.fog.far = cur.far;
-  scene.background.copy(cur.fog);
-  hemi.color.copy(cur.hsky); hemi.groundColor.copy(cur.hground); hemi.intensity = cur.hemiI;
-  sun.color.copy(cur.sun); sun.intensity = cur.sunI;
+  const outdoors = curZone !== 'spire';
+  scene.userData.outdoors = outdoors;
+  const st = skyState();
+  const day = outdoors ? st.day : 1, night = outdoors ? st.night : 0, dusk = outdoors ? st.sunset : 0;
+  // the sun fades out at the horizon; the moon fades in once it is well down
+  const sunOn = !outdoors || st.sunAlt > -0.04;
+  const sunStrength = outdoors ? cur.sunI * Math.max(0, Math.min(1, (st.sunAlt + 0.04) / 0.16)) : cur.sunI;
+  const moonStrength = 0.62 * Math.max(0, Math.min(1, (-0.04 - st.sunAlt) / 0.16));
+  _c1.copy(cur.sun).lerp(DUSK_SUN, dusk * 0.8);
+  if (sunOn) { sun.color.copy(_c1); sun.intensity = sunStrength; } else { sun.color.copy(MOON_COL); sun.intensity = moonStrength; }
+  if (outdoors) SUN_DIR.copy(st.lightDir);
+  // sky light and fog shift with the hour
+  hemi.color.copy(cur.hsky).lerp(DUSK_FOG, dusk * 0.35).lerp(NIGHT_SKY, night);
+  hemi.groundColor.copy(cur.hground).lerp(NIGHT_GROUND, night);
+  hemi.intensity = cur.hemiI * (1 - 0.5 * night);
+  _c2.copy(cur.fog).lerp(DUSK_FOG, dusk * 0.55).lerp(NIGHT_FOG, night * 0.94);
+  scene.fog.color.copy(_c2);
+  scene.fog.near = cur.near; scene.fog.far = cur.far * (1 - 0.18 * night);
+  scene.background.copy(_c2);
   torchLight.intensity = cur.torch;
+  G.renderer.toneMappingExposure = 0.95 * (1 + 0.3 * night);
   shared.uTime.value = G.time;
-  shared.uSunColor.value.copy(cur.sun);
-  shared.uSkyTop.value.copy(cur.sky);
-  shared.uHorizon.value.copy(cur.fog);
+  shared.uSunColor.value.copy(_c1);
+  shared.uSkyTop.value.copy(cur.sky).lerp(DUSK_TOP, dusk * 0.45).lerp(NIGHT_TOP, night);
+  shared.uHorizon.value.copy(_c2);
   shared.uCloud.value = cur.cloud;
-  shared.uRim.value.copy(cur.rim);
+  shared.uRim.value.copy(cur.rim).lerp(NIGHT_RIM, night * 0.8);
+  shared.uNight.value = night;
+  shared.uSunset.value = dusk;
+  if (outdoors) { shared.uSunDir.value.copy(st.sunDir); shared.uMoonDir.value.copy(st.moonDir); }
+  // haze glows toward the light; mist thickens at dusk and night
+  shared.uFogSunDir.value.copy(sunOn ? shared.uSunDir.value : st.moonDir);
+  shared.uFogSunCol.value.copy(sunOn ? _c1 : MOON_COL).multiplyScalar(sunOn ? 0.9 : 0.25).lerp(_c2, sunOn ? 0.35 : 0.6);
+  shared.uFogMist.value = cur.mist * (1 + 0.4 * night + 0.3 * dusk);
   sky.material.uniforms.uCloudTint.value.copy(cur.cloudTint);
   if (terrain?.waterMat) {
-    terrain.waterMat.uniforms.uShallow.value.copy(cur.shallow);
-    terrain.waterMat.uniforms.uDeep.value.copy(cur.deep);
+    const wu = terrain.waterMat.uniforms;
+    const wl = 0.3 + 0.7 * day;
+    wu.uShallow.value.copy(cur.shallow).multiplyScalar(wl);
+    wu.uDeep.value.copy(cur.deep).multiplyScalar(wl);
+    wu.uSunDir.value.copy(SUN_DIR);
+    wu.uSunColor.value.copy(sunOn ? _c1 : MOON_COL).multiplyScalar(sunOn ? 1 : 0.6);
   }
+  // lanterns and torches burn brighter after dark
+  if (glowMat) glowMat.opacity = 0.75 + 0.25 * night;
+  if (glowSprites) { const gs = 1 + 0.55 * night; if (glowSprites.userData.gs !== gs) { glowSprites.userData.gs = gs; for (const c of glowSprites.children) c.scale.setScalar((c.userData.base ??= c.scale.x) * gs); } }
   sky.position.copy(G.camera.position);
   sky.visible = curZone !== 'spire';
   // keep the shadow map centered on the player, snapped to whole texels so it does not shimmer
@@ -250,7 +292,8 @@ export function updateScene(dt) {
   }
   updateScenery(dt);
   updateGrass();
-  updateAmbient(dt, curZone);
+  updateAmbient(dt, curZone, night);
 }
+export function timeOfDay() { return skyState(); }
 
 export function render() { renderFrame(G.renderer, G.scene, G.camera); }

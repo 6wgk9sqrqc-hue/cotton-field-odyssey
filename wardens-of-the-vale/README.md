@@ -118,10 +118,18 @@ Everything is drawn with three.js and generated in code, with three quality leve
 | Surface relief on ground and buildings | off | on | on |
 | Wildflowers | off | some | full |
 | Bloom, vignette and color grading | off | off | on |
+| Ambient occlusion (contact shading) | off | off | on |
+| Sun shafts through trees and clouds | off | off | on |
 
 The starting level comes from the phone's GPU (recent iPhones and Snapdragon, Exynos, Tensor and
 Dimensity flagships start on High). If frames stay slow even at the lowest resolution, the game
 drops one level for that session.
+
+A day and night cycle runs on every level: a game day lasts about 34 minutes, with 26 minutes of
+daylight and a short 8-minute night. The sun rises in the east and sets in the west with
+orange skies and lit clouds; at night a moon casts the shadows, stars come out, windows and lamps
+glow and fireflies fill the meadows, woods and marsh. The minimap shows the time. Distance haze
+takes the color of the sky toward the sun, and low mist settles in valleys, thickest in the marsh.
 
 All levels share the shader sky with drifting clouds and cloud shadows, detail-textured terrain,
 water with depth, foam and sun glints, animated lava, wind in grass, crops and trees, plank, stone
@@ -135,7 +143,7 @@ down by itself when frames take too long and recovers when there is headroom.
 index.html, css/game.css    page shell and interface styles
 js/main.js                  boot, character creation, main loop
 js/engine/                  terrain, scenery, units, combat, spells, AI, quests, inventory, world
-js/engine/gfx.js, envshaders.js, post.js, grassfield.js, ambient.js   graphics: quality, shaders, bloom, grass, particles
+js/engine/gfx.js, envshaders.js, post.js, grassfield.js, ambient.js, daynight.js   graphics: quality, shaders, post effects, grass, particles, time of day
 js/data/                    classes, abilities, talents, items, creatures, NPCs, spawns, quests
 js/ui/                      HUD, touch controls, windows, tooltips, icons, minimap, character select, sound
 js/lib/three.module.min.js  three.js r170 (MIT)

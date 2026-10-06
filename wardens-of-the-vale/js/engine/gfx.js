@@ -8,9 +8,9 @@ import { G } from '../state.js';
 // Tuned for phones: high is what a recent flagship can hold at a good frame
 // rate, and the resolution scales down on its own before quality has to drop.
 export const PRESETS = {
-  low: { shadows: false, shadowSize: 0, shadowRange: 0, pixelRatio: 1.25, minPixelRatio: 0.6, bloom: false, particles: 0.5, terrainShadows: false, far: 0.75, bump: false, flowers: 0 },
-  medium: { shadows: true, shadowSize: 1024, shadowRange: 32, pixelRatio: 1.6, minPixelRatio: 0.7, bloom: false, particles: 0.8, terrainShadows: false, far: 0.9, bump: true, flowers: 0.5 },
-  high: { shadows: true, shadowSize: 2048, shadowRange: 46, pixelRatio: 2, minPixelRatio: 0.75, bloom: true, particles: 1, terrainShadows: true, far: 1, bump: true, flowers: 1 },
+  low: { shadows: false, shadowSize: 0, shadowRange: 0, pixelRatio: 1.25, minPixelRatio: 0.6, bloom: false, particles: 0.5, terrainShadows: false, far: 0.75, bump: false, flowers: 0, ao: false, rays: false },
+  medium: { shadows: true, shadowSize: 1024, shadowRange: 32, pixelRatio: 1.6, minPixelRatio: 0.7, bloom: false, particles: 0.8, terrainShadows: false, far: 0.9, bump: true, flowers: 0.5, ao: false, rays: false },
+  high: { shadows: true, shadowSize: 2048, shadowRange: 46, pixelRatio: 2, minPixelRatio: 0.75, bloom: true, particles: 1, terrainShadows: true, far: 1, bump: true, flowers: 1, ao: true, rays: true },
 };
 export const QUALITY_ORDER = ['low', 'medium', 'high'];
 const QKEY = 'wov_quality';
@@ -54,7 +54,58 @@ export const shared = {
   uHorizon: { value: new THREE.Color(0xc9dcec) },
   uRim: { value: new THREE.Color(0x8aa0c0).multiplyScalar(0.32) },
   uCloud: { value: 0.5 },
+  uNight: { value: 0 },
+  uSunset: { value: 0 },
+  uMoonDir: { value: new THREE.Vector3(-0.5, 0.6, 0.3).normalize() },
+  // atmosphere: haze that glows toward the sun, mist that pools low
+  uFogSunDir: { value: new THREE.Vector3(0.5, 0.7, 0.4).normalize() },
+  uFogSunCol: { value: new THREE.Color(1, 0.9, 0.7) },
+  uFogMist: { value: 0.3 },
+  uFogBase: { value: 1.5 },
 };
+const FOG_UNIFORMS = ['uFogSunDir', 'uFogSunCol', 'uFogMist', 'uFogBase'];
+export function fogUniforms() { const o = {}; for (const k of FOG_UNIFORMS) o[k] = shared[k]; return o; }
+
+// Fog for every material: distance fog as before, plus mist that thickens near
+// the ground and haze tinted by the sun when looking toward it. Materials that
+// do not receive the extra uniforms fall back to plain fog (they read zeros).
+THREE.ShaderChunk.fog_pars_vertex = `#ifdef USE_FOG
+  varying float vFogDepth;
+  varying vec3 vFogWorld;
+#endif`;
+THREE.ShaderChunk.fog_vertex = `#ifdef USE_FOG
+  vFogDepth = - mvPosition.z;
+  vFogWorld = cameraPosition + transpose(mat3(viewMatrix)) * mvPosition.xyz;
+#endif`;
+THREE.ShaderChunk.fog_pars_fragment = `#ifdef USE_FOG
+  uniform vec3 fogColor;
+  varying float vFogDepth;
+  varying vec3 vFogWorld;
+  uniform vec3 uFogSunDir;
+  uniform vec3 uFogSunCol;
+  uniform float uFogMist;
+  uniform float uFogBase;
+  #ifdef FOG_EXP2
+    uniform float fogDensity;
+  #else
+    uniform float fogNear;
+    uniform float fogFar;
+  #endif
+#endif`;
+THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
+  vec3 fogRay = vFogWorld - cameraPosition;
+  float fogDist = max(length(fogRay), 0.001);
+  #ifdef FOG_EXP2
+    float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+  #else
+    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+  #endif
+  float mistH = exp( - max( vFogWorld.y - uFogBase, 0.0 ) * 0.09 );
+  fogFactor = max( fogFactor, ( 1.0 - exp( - fogDist * 0.0075 * uFogMist * mistH ) ) * 0.78 );
+  float fogSun = pow( max( dot( fogRay / fogDist, uFogSunDir ), 0.0 ), 6.0 );
+  vec3 fogC = mix( fogColor, uFogSunCol, fogSun * 0.6 );
+  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogC, fogFactor );
+#endif`;
 
 // ---------- tileable noise ----------
 function hash(x, y, s) {
@@ -317,8 +368,10 @@ const STRUCT_FRAG = /* glsl */`
     if (sid > 0.5 && sid < 1.5) pv = texture2D(uPattern, puv * vec2(0.45, 0.5)).r;
     else if (sid > 1.5 && sid < 2.5) pv = texture2D(uPattern, puv * 0.3).g;
     else if (sid > 2.5 && sid < 3.5) pv = texture2D(uPattern, puv * 0.55).b;
-    else if (sid > 3.5) pv = texture2D(uPattern, puv * 0.22).a;
+    else if (sid > 3.5 && sid < 4.5) pv = texture2D(uPattern, puv * 0.22).a;
     diffuseColor.rgb *= 0.5 + pv;
+    // windows glow warm once the sun goes down
+    if (sid > 4.5) totalEmissiveRadiance += vec3(1.6, 1.05, 0.5) * uNight;
     wovHeight = sid > 0.5 ? pv : 0.5;
     diffuseColor.rgb *= cloudShade(vWPos.xz);
   }
@@ -334,7 +387,7 @@ export function structureMaterial() {
       .replace('#include <common>', '#include <common>\nattribute float surfId;\nvarying float vSurfId;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurfId = surfId;\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uPattern;\nuniform sampler2D uDetail;\nuniform float uBump;\nvarying float vSurfId;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\n' + CLOUD_GLSL)
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uPattern;\nuniform sampler2D uDetail;\nuniform float uBump;\nuniform float uNight;\nvarying float vSurfId;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\n' + CLOUD_GLSL)
       .replace('#include <color_fragment>', '#include <color_fragment>\nfloat wovHeight = 0.5;\n' + STRUCT_FRAG)
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + BUMP_GLSL)
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + NEAR_FADE);
@@ -349,6 +402,7 @@ export function addRimLight(m) {
   m.onBeforeCompile = (sh, r) => {
     prev?.(sh, r);
     sh.uniforms.uRim = shared.uRim;
+    Object.assign(sh.uniforms, fogUniforms());
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform vec3 uRim;')
       .replace('#include <opaque_fragment>', /* glsl */`
@@ -368,6 +422,7 @@ const _hsl = {};
 const _col = new THREE.Color();
 export function surfaceFor(part) {
   if (part.surf !== undefined) return part.surf;
+  if (part.c === 0xf0d080) return 5; // window panes
   const t = part.g?.type;
   _col.setHex(part.c);
   _col.getHSL(_hsl);

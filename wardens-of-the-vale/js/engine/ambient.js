@@ -15,6 +15,9 @@ const ZONE = {
   ashen: { mode: 'ember', n: 150, color: [2.4, 0.9, 0.25], size: 0.11, alpha: 0.95 },
   spire: { mode: 'dust', n: 110, color: [0.9, 0.75, 1.3], size: 0.08, alpha: 0.5 },
 };
+// after dark the meadows, woods and fen fill with fireflies
+const NIGHT = { mode: 'firefly', n: 140, color: [1.8, 2.1, 0.6], size: 0.17, alpha: 1 };
+const NIGHT_ZONES = new Set(['cottonvale', 'whisperwood', 'saltmarsh']);
 
 let points, posA, colA, sizeA;
 const ps = [];
@@ -76,7 +79,8 @@ function spawn(p, cx, cz, anywhere) {
   p.y = g + p.h;
 }
 
-export function updateAmbient(dt, zoneId) {
+export function updateAmbient(dt, zoneIdIn, night = 0) {
+  const zoneId = night > 0.55 && NIGHT_ZONES.has(zoneIdIn) ? zoneIdIn + ':night' : zoneIdIn;
   if (!points) return;
   const p0 = G.player;
   const cx = p0 ? p0.pos.x : G.camera.position.x, cz = p0 ? p0.pos.z : G.camera.position.z;
@@ -84,7 +88,7 @@ export function updateAmbient(dt, zoneId) {
     fade -= dt * 2;
     if (fade <= 0 || !zone) {
       zone = zoneId;
-      cfg = ZONE[zoneId] ?? ZONE.cottonvale;
+      cfg = zoneId.endsWith(':night') ? NIGHT : ZONE[zoneId] ?? ZONE.cottonvale;
       ps.length = 0;
       const n = Math.min(MAX, Math.round(cfg.n * preset().particles));
       for (let i = 0; i < n; i++) { const p = {}; spawn(p, cx, cz, true); ps.push(p); }

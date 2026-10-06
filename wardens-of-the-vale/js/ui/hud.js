@@ -16,6 +16,7 @@ import { releaseSpirit, canResurrect, resurrectAtCorpse, lootEmpty } from '../en
 import { drawMinimap, minimapZoom } from './minimap.js';
 import { petHappinessText } from '../engine/summons.js';
 import { unspentTalentPoints } from '../engine/progression.js';
+import { clockText } from '../engine/daynight.js';
 import { questsForUnit, unitQuestLines, questColor, questie, setFocus, trackerHint, fmtDist, questieOn } from './questie.js';
 
 const $ = (id) => document.getElementById(id);
@@ -684,8 +685,8 @@ export function updateHud(dt) {
     updateTrackerHints();
     const mm = document.querySelector('#microMenu [data-win="talents"]');
     if (mm) mm.classList.toggle('alert', unspentTalentPoints(p) > 0);
-    const clock = new Date();
-    setText($('mmClock'), clock.getHours().toString().padStart(2, '0') + ':' + clock.getMinutes().toString().padStart(2, '0'));
+    // the minimap clock shows the time of day in the Vale
+    setText($('mmClock'), `${G.dayTime >= 6 && G.dayTime < 20 ? '☀' : '☾'} ${clockText()}`);
   }
   if (frameN % 3 === 0) drawMinimap($('minimap'));
   $('mmArrow').style.transform = `rotate(${(-p.facing + Math.PI).toFixed(3)}rad)`;

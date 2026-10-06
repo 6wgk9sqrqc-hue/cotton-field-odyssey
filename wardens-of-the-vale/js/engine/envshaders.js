@@ -1,6 +1,6 @@
 // Shader materials for the sky dome, water and lava.
 import * as THREE from '../lib/three.module.min.js';
-import { shared, waterTexture } from './gfx.js';
+import { shared, waterTexture, fogUniforms } from './gfx.js';
 
 const NOISE = /* glsl */`
   float vhash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -21,9 +21,11 @@ const OUT = /* glsl */`
 `;
 
 // ---------- sky ----------
+// Gradient sky with a sun disk, glow at the horizon around sunset, drifting
+// clouds lit from the sun's side, and stars and a moon after dark.
 export function skyMaterial(lowPower) {
   return new THREE.ShaderMaterial({
-    uniforms: { ...shared, uCloudTint: { value: new THREE.Color(1, 1, 1) } },
+    uniforms: { ...shared, uCloudTint: { value: new THREE.Color(1, 1, 1) }, uSunsetCol: { value: new THREE.Color(1.0, 0.45, 0.18) } },
     side: THREE.BackSide, depthWrite: false, fog: false,
     defines: { CLOUD_OCT: lowPower ? 3 : 5 },
     vertexShader: /* glsl */`
@@ -33,22 +35,48 @@ export function skyMaterial(lowPower) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */`
-      uniform vec3 uSkyTop, uHorizon, uSunDir, uSunColor, uCloudTint;
-      uniform float uTime, uCloud;
+      uniform vec3 uSkyTop, uHorizon, uSunDir, uSunColor, uCloudTint, uSunsetCol, uMoonDir;
+      uniform float uTime, uCloud, uNight, uSunset;
       varying vec3 vDir;
       ${NOISE}
+      float hash3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
       void main() {
         vec3 d = normalize(vDir);
         float h = d.y;
         vec3 col = mix(uHorizon, uSkyTop, smoothstep(-0.02, 0.5, h));
+        // sunset: a warm band along the horizon, strongest toward the sun
+        vec2 sxz = normalize(uSunDir.xz + 1e-4);
+        float toward = max(dot(normalize(d.xz + 1e-4), sxz), 0.0);
+        float band = (1.0 - smoothstep(-0.05, 0.42, h)) * (0.35 + 0.65 * pow(toward, 3.0));
+        col = mix(col, uSunsetCol * 1.15, band * uSunset * 0.85);
+        col += uSunsetCol * pow(toward, 12.0) * (1.0 - smoothstep(0.0, 0.25, h)) * uSunset * 0.6;
         float sd = max(dot(d, uSunDir), 0.0);
-        col += uSunColor * (pow(sd, 1400.0) * 9.0 + pow(sd, 60.0) * 0.35 + pow(sd, 6.0) * 0.12);
+        float sunUp = smoothstep(-0.06, 0.02, uSunDir.y);
+        col += uSunColor * (pow(sd, 1400.0) * 9.0 + pow(sd, 60.0) * 0.35 + pow(sd, 6.0) * 0.12) * sunUp;
+        // night: stars, a moon and its glow
+        if (uNight > 0.01) {
+          vec3 sp = d * 180.0;
+          vec3 cell = floor(sp);
+          float r = hash3(cell);
+          vec3 local = fract(sp) - 0.5;
+          float star = step(0.9965, r) * smoothstep(0.22, 0.0, length(local));
+          star *= 0.6 + 0.4 * sin(uTime * (2.0 + r * 5.0) + r * 40.0);
+          col += vec3(0.85, 0.9, 1.0) * star * uNight * smoothstep(0.0, 0.2, h) * 1.6;
+          float md = dot(d, uMoonDir);
+          col += vec3(0.85, 0.9, 1.0) * smoothstep(0.99935, 0.9996, md) * 1.8 * uNight;
+          col += vec3(0.35, 0.42, 0.65) * pow(max(md, 0.0), 40.0) * 0.35 * uNight;
+        }
         if (h > 0.0) {
           vec2 uv = d.xz / (h + 0.1) * 0.9 + vec2(uTime * 0.0045, uTime * 0.002);
-          float n = vfbm(uv * 1.3, CLOUD_OCT);
+          vec2 warp = vec2(vfbm(uv * 0.7 + 3.1, 3), vfbm(uv * 0.7 - 1.7, 3)) - 0.5;
+          float n = vfbm(uv * 1.3 + warp * 0.9, CLOUD_OCT);
           float cover = smoothstep(0.62 - uCloud * 0.28, 0.9 - uCloud * 0.2, n) * smoothstep(0.0, 0.18, h);
-          float lit = smoothstep(0.45, 0.85, vfbm(uv * 1.3 + uSunDir.xz * 0.06, 3));
-          vec3 cc = uCloudTint * mix(vec3(0.72, 0.74, 0.8), vec3(1.05), lit) + uSunColor * pow(sd, 5.0) * 0.5;
+          // brighter on the side facing the sun, darker underneath
+          float lit = smoothstep(0.4, 0.85, vfbm(uv * 1.3 + warp * 0.9 + uSunDir.xz * 0.08, 3));
+          vec3 dayCloud = uCloudTint * mix(vec3(0.66, 0.69, 0.76), vec3(1.07), lit) + uSunColor * pow(sd, 5.0) * 0.5;
+          vec3 duskCloud = mix(vec3(0.55, 0.35, 0.4), uSunsetCol * 1.25, lit * (0.4 + 0.6 * toward));
+          vec3 nightCloud = vec3(0.07, 0.08, 0.12) + vec3(0.1, 0.12, 0.18) * lit;
+          vec3 cc = mix(mix(dayCloud, duskCloud, uSunset), nightCloud, uNight);
           col = mix(col, cc, cover * 0.9);
         }
         gl_FragColor = vec4(col, 1.0);
@@ -127,6 +155,7 @@ export function waterMaterial(heightTex, hmap) {
 export function lavaMaterial() {
   const uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {}]);
   uniforms.uTime = shared.uTime;
+  Object.assign(uniforms, fogUniforms());
   return new THREE.ShaderMaterial({
     uniforms, fog: true,
     vertexShader: /* glsl */`
