@@ -147,6 +147,9 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 .tcast { position: relative; height: 10px; margin-top: 3px; background: #000; border: 1px solid #000; }
 .tcast i { position: absolute; inset: 0 auto 0 0; background: #e8b830; }
 .tcast span { position: relative; display: block; font-size: 10px; line-height: 10px; text-align: center; text-shadow: 0 0 2px #000; }
+/* Questie: quest progress under the target's name */
+.tquest { margin-top: 3px; font-size: 11px; line-height: 14px; color: #ffe9a0; text-shadow: 0 0 2px #000; }
+.tquest i, #questTracker .qt-dot, .map-quests i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; box-shadow: 0 0 0 1px #000; }
 #petFrame { grid-column: 1; }
 #partyFrames { grid-column: 1; display: grid; gap: 4px; }
 .party-member { display: grid; grid-template-columns: 1fr; width: 150px; padding: 3px 6px; background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; cursor: pointer; }
@@ -177,6 +180,32 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 #questTracker .qt-q { margin-bottom: 6px; cursor: pointer; }
 #questTracker .qt-name { color: #ffd100; font-weight: 700; }
 #questTracker .qt-name.done { color: #40ff40; }
+#questTracker .qt-q { position: relative; padding: 2px 4px 2px 6px; border-left: 2px solid transparent; border-radius: 3px; }
+#questTracker .qt-q.focus { border-left-color: var(--qc); background: rgba(0, 0, 0, 0.32); }
+#questTracker .qt-dot { background: var(--qc); }
+#questTracker .qt-g.done { color: #8a8a8a; }
+#questTracker.collapsed .qt-q { display: none; }
+#questTracker .qt-toggle { font-family: var(--body); font-size: 12px; color: var(--muted); margin-left: 4px; }
+#questTracker .qt-dir { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font-weight: 700; font-size: 11px; color: #e8e0c8; }
+#questTracker .qt-dir[hidden] { display: none; }
+#questTracker .qt-dir svg { width: 13px; height: 13px; fill: var(--qc); stroke: #000; stroke-width: 2.5; }
+#questTracker .qt-dir b { font-weight: 700; }
+
+/* Questie guide arrow for the focused quest */
+#questArrow { position: absolute; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 4px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 6px; border-radius: 22px; background: rgba(12, 8, 4, 0.72); border: 1.5px solid var(--qc, #ffd24a); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5); pointer-events: auto; cursor: pointer; max-width: min(360px, 70vw); z-index: 6; }
+#questArrow .qa-arrow { width: 34px; height: 34px; flex: none; fill: var(--qc, #ffd24a); stroke: #000; stroke-width: 2.5; stroke-linejoin: round; transition: transform 0.12s linear; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
+#questArrow.here .qa-arrow { animation: qaPulse 0.9s ease-in-out infinite; }
+@keyframes qaPulse { 50% { opacity: 0.45; } }
+#questArrow .qa-text { min-width: 0; line-height: 1.15; }
+#questArrow .qa-quest { font-family: var(--display); font-size: 13px; color: var(--qc, #ffd24a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#questArrow .qa-label { font-size: 12px; color: #f0e8d0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* world map quest list */
+.map-quests { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.map-quests .mq { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 14px; border: 1px solid #3a2e1e; background: #1a140c; color: var(--text); font-size: 13px; cursor: pointer; }
+.map-quests .mq.on { border-color: var(--gold); background: #2a1e10; }
+.map-quests .mq small { color: var(--muted); margin-left: 2px; }
+.lg-badge { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #ffd24a; color: #120c06; font-size: 9px; font-weight: 900; margin-right: 2px; }
 #questTracker .qt-g { color: #e8e0c8; padding-left: 8px; }
 #questTracker .qt-g.done { color: #9a9a9a; }
 
@@ -251,6 +280,8 @@ body.dead #game { filter: grayscale(0.6) brightness(0.6); }
 .fct.heal { color: #3cff3c; } .fct.miss { color: #ffffff; font-size: 16px; } .fct.self { color: #ff3030; } .fct.xp { color: #c890ff; font-size: 16px; } .fct.spell { color: #ffe060; } .fct.white { color: #ffffff; }
 .np { position: absolute; transform: translate(-50%, -100%); text-align: center; white-space: nowrap; }
 .np .np-name { font-size: 12px; font-weight: 700; text-shadow: 0 0 2px #000, 0 1px 1px #000; }
+.np .np-q { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 4px; border-radius: 50%; color: #1a1006; font-size: 10px; font-weight: 900; line-height: 1; text-shadow: none; box-shadow: 0 0 0 1.5px #000, 0 0 6px rgba(255, 220, 120, 0.6); vertical-align: 1px; }
+.np .np-q[hidden] { display: none; }
 .np .np-title { font-size: 11px; color: #ccc; text-shadow: 0 0 2px #000; }
 .np .np-bar { width: 80px; height: 6px; margin: 1px auto 0; background: #000; border: 1px solid #000; }
 .np .np-bar i { display: block; height: 100%; background: #c81e14; }
@@ -386,10 +417,10 @@ body.touch { --ts: 1; }
 #thCluster { position: absolute; right: calc(max(6px, env(safe-area-inset-right)) + 4px); bottom: calc(max(6px, env(safe-area-inset-bottom)) + 10px); transform: scale(var(--ts)); transform-origin: bottom right; pointer-events: none; }
 #thCluster > * { position: absolute; pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none; }
 #thJump { width: 84px; height: 84px; border-radius: 50%; padding: 0; border: 3px solid rgba(255, 255, 255, 0.8); background: rgba(0, 0, 0, 0.36); display: grid; place-items: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); transition: transform 0.06s, background 0.06s; }
-#thJump svg { width: 46px; height: 46px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
+#thJump svg { width: 55%; height: 55%; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
 #thJump.down { transform: scale(0.92); background: rgba(255, 255, 255, 0.24); }
 #thMain { width: 72px; height: 72px; border-radius: 50%; padding: 0; border: 3px solid #c9a254; background: radial-gradient(circle at 50% 35%, #8a3018, #2a0c06 75%); box-shadow: 0 0 0 2px #000, 0 6px 16px rgba(0, 0, 0, 0.6), inset 0 0 18px rgba(0, 0, 0, 0.6); display: grid; place-items: center; overflow: hidden; transition: transform 0.08s; }
-#thMain img { width: 42px; height: 42px; border-radius: 9px; margin-top: -10px; }
+#thMain img { width: 58%; height: 58%; border-radius: 9px; margin-top: -12%; }
 #thMain .lbl { position: absolute; bottom: 7px; left: 0; right: 0; text-align: center; font-family: var(--display); font-size: 12px; color: #ffe0a0; text-shadow: 0 1px 2px #000; }
 #thMain.engaged { border-color: #ff8048; box-shadow: 0 0 0 2px #000, 0 0 18px rgba(255, 90, 40, 0.75); }
 #thMain[data-kind="talk"] { background: radial-gradient(circle at 50% 35%, #2c5288, #081428 75%); }
@@ -402,7 +433,7 @@ body.touch { --ts: 1; }
 .th-slot .cdt { font-size: 17px; }
 .th-slot.queued, .th-slot.active { box-shadow: 0 0 0 2px #ffe080, 0 0 12px #ffd060; }
 .th-util { width: 46px; height: 46px; border-radius: 50%; padding: 0; border: 2px solid rgba(200, 170, 110, 0.6); background: radial-gradient(#3a2e1e, #140e08); color: #ffe0a0; font-size: 20px; line-height: 1; display: grid; place-items: center; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
-.th-util img { width: 28px; height: 28px; border-radius: 5px; }
+.th-util img { width: 62%; height: 62%; border-radius: 5px; }
 .th-util small { position: absolute; top: 100%; left: -12px; right: -12px; margin-top: 1px; text-align: center; font-size: 10px; color: #d8c8a0; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
 #thPage b { font-family: var(--display); font-size: 21px; font-weight: 400; }
 #thPage.more { border-color: #ffd060; }
@@ -448,15 +479,35 @@ body.touch .islot { width: 52px; height: 52px; }
 body.touch .bags-grid { grid-template-columns: repeat(auto-fill, 52px); }
 body.touch .btn { padding: 9px 18px; }
 body.touch .btn.small { padding: 7px 12px; }
+/* held upright: frames stacked top-left, minimap and buttons top-right, the
+   guide arrow and tracker below them, stick bottom-left, cluster bottom-right */
 @media (orientation: portrait) {
-  body.touch { --ts: 0.86; }
-  body.touch #frames { grid-template-columns: auto; }
-  body.touch #joyHint { left: calc(max(12px, env(safe-area-inset-left)) + 10px); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 60px); }
-  body.touch #thTop { left: auto; right: max(8px, env(safe-area-inset-right)); top: calc(max(8px, env(safe-area-inset-top)) + 150px); transform: none; flex-direction: column; }
-  body.touch #questTracker { top: calc(max(8px, env(safe-area-inset-top)) + 300px); right: auto; left: max(8px, env(safe-area-inset-left)); }
-  body.touch #bottom { bottom: calc(max(4px, env(safe-area-inset-bottom)) + 280px); }
-  body.touch #castBar { bottom: calc(max(4px, env(safe-area-inset-bottom)) + 340px); }
-  #buffs { top: 90px; right: 8px; max-width: 160px; }
+  body.touch { --ts: 1; --ui: 0.82; }
+  body.touch #frames { grid-template-columns: auto; gap: 4px; }
+  body.touch .uf.target { grid-column: 1; }
+  body.touch .uf.target .tot { display: none; }
+  body.touch #mapCorner { transform: scale(0.66); }
+  body.touch #thTop { left: auto; right: max(8px, env(safe-area-inset-right)); top: calc(max(8px, env(safe-area-inset-top)) + 122px); transform: none; flex-direction: column; gap: 8px; }
+  body.touch #thTop button { width: 40px; height: 40px; }
+  body.touch #questArrow { left: max(8px, env(safe-area-inset-left)); transform: none; top: calc(max(8px, env(safe-area-inset-top)) + 128px); max-width: calc(100vw - 72px); }
+  body.touch #questTracker { top: calc(max(8px, env(safe-area-inset-top)) + 178px); right: auto; left: max(8px, env(safe-area-inset-left)); width: min(250px, calc(100vw - 72px)); max-height: 24vh; }
+  body.touch #buffs { top: calc(max(8px, env(safe-area-inset-top)) + 280px); right: max(8px, env(safe-area-inset-right)); max-width: 44px; flex-direction: column; }
+  body.touch #bottom { left: max(8px, env(safe-area-inset-left)); right: auto; transform: scale(var(--ui)); transform-origin: bottom left; justify-items: start; bottom: calc(max(4px, env(safe-area-inset-bottom)) + 236px); }
+  body.touch #castBar { bottom: calc(max(4px, env(safe-area-inset-bottom)) + 300px); width: min(260px, 70vw); }
+  body.touch #joyHint { left: calc(max(12px, env(safe-area-inset-left)) + 14px); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 52px); }
+  body.touch.chat-open #chat { top: auto; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 290px); width: calc(100vw - 16px); }
+  body.touch #zoneText { top: 34%; }
+}
+@media (orientation: portrait) and (max-width: 370px) { body.touch { --ts: 0.9; --ui: 0.76; } }
+@media (orientation: portrait) and (min-width: 600px) { body.touch { --ts: 1.15; --ui: 1; } }
+@media (orientation: landscape) and (max-height: 500px) {
+  body.touch #questArrow { max-width: 230px; top: auto; bottom: calc(max(6px, env(safe-area-inset-bottom)) + 54px); }
+  body.touch #castBar { bottom: calc(max(4px, env(safe-area-inset-bottom)) + 112px); }
+  /* compact tracker under the player frame; only the focused quest lists its objectives */
+  body.touch #questTracker { top: calc(max(8px, env(safe-area-inset-top)) + 64px); right: auto; left: max(8px, env(safe-area-inset-left)); width: 230px; max-height: 38vh; font-size: 12px; }
+  body.touch #questTracker .qt-q:not(.focus) .qt-g { display: none; }
+  body.touch #questTracker .qt-q { margin-bottom: 3px; }
+}
 }
 @media (max-height: 520px) { :root { --ui: 0.72; } #questTracker { top: 150px; max-height: 30vh; } #castBar { bottom: 110px; } }
 @media (max-width: 900px) and (min-height: 521px) { :root { --ui: 0.85; } }

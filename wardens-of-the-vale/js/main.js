@@ -22,6 +22,7 @@ import { initHud, updateHud, chat, entryTooltip } from './ui/hud.js';
 import { initWindows, toggle, closeAll, pickup, dropOnBar, slotMenu, openQuestLog, clearCursor } from './ui/windows.js';
 import { initMaps } from './ui/minimap.js';
 import { initTouchHud, updateTouchHud } from './ui/touch.js';
+import { initQuestie, updateQuestie } from './ui/questie.js';
 import { initSfx } from './ui/sfx.js';
 import { showStart, hideStart } from './ui/charselect.js';
 import { saveChar, newSaveId, serialize } from './save.js';
@@ -63,6 +64,7 @@ async function boot() {
   };
   initHud();
   initTouchHud();
+  initQuestie();
   initWindows();
   initSfx();
   progress('Ready', 1);
@@ -267,6 +269,7 @@ function tick(dt) {
   updateFx(dt);
   updateHud(dt);
   updateTouchHud(dt);
+  updateQuestie(dt);
   saveT += dt;
   if (saveT > 15) { saveT = 0; saveChar(p); }
 }

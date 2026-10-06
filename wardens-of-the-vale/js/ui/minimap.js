@@ -5,6 +5,7 @@ import { WORLD_HALF, ZONES, OVERWORLD_ZONES, TOWNS, FLIGHT_POINTS, SUBZONES, DUN
 import { npcQuestMarker } from '../engine/quests.js';
 import { canAttack } from '../engine/combat.js';
 import { inDungeon } from '../engine/collision.js';
+import { drawQuestPOIs, questie, guideTarget, questColor, questieOn, drawBadge } from './questie.js';
 
 let mapImg = null;
 let radius = 90; // yards shown from centre to edge
@@ -42,6 +43,10 @@ export function drawMinimap(cv) {
     ctx.drawImage(mapImg, sx, sz, radius * 2 * ipx, radius * 2 * ipx, 0, 0, W, W);
   }
   const toPx = (x, z) => [W / 2 + (x - p.pos.x) * scale, W / 2 + (z - p.pos.z) * scale];
+  // Questie: objective areas and badges for every active quest
+  if (!inDungeon(p.pos.x)) {
+    drawQuestPOIs(ctx, p, toPx, scale, { badge: 11, cull: (poi) => Math.abs(poi.x - p.pos.x) < radius + poi.r && Math.abs(poi.z - p.pos.z) < radius + poi.r });
+  }
   // tracked creatures
   const track = p.auras.find((a) => a.track)?.track;
   for (const u of G.units) {
@@ -66,6 +71,25 @@ export function drawMinimap(cv) {
     if (!o.glow.visible || !o.mesh.visible) continue;
     const [x, y] = toPx(o.x, o.z);
     dot(ctx, x, y, 2.5, '#ffe070');
+  }
+  // the focused quest's next stop, pinned to the rim when it is off the map
+  if (questie.focus && questieOn()) {
+    const t = guideTarget(p, questie.focus);
+    if (t) {
+      let [x, y] = toPx(t.x, t.z);
+      const dx = x - W / 2, dy = y - W / 2, d = Math.hypot(dx, dy);
+      const color = questColor(p, questie.focus);
+      if (d > W / 2 - 14) {
+        x = W / 2 + dx / d * (W / 2 - 14); y = W / 2 + dy / d * (W / 2 - 14);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(dy, dx) + Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(10, 9); ctx.lineTo(0, 4); ctx.lineTo(-10, 9); ctx.closePath();
+        ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.stroke();
+        ctx.restore();
+      } else {
+        ctx.beginPath(); ctx.arc(x, y, 15 + Math.sin(G.time * 5) * 3, 0, Math.PI * 2);
+        ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.stroke();
+      }
+    }
   }
   if (p.corpse) {
     let [x, y] = toPx(p.corpse.x, p.corpse.z);
@@ -122,12 +146,24 @@ export function drawWorldMap(cv) {
   // spire marker
   const [sx, sy] = toPx(80, -548);
   ctx.fillStyle = '#b070ff'; ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  drawQuestPOIs(ctx, p, toPx, W / (WORLD_HALF * 2), { badge: Math.max(7, W / 80) });
   for (const u of G.units) {
     if (u.kind !== 'npc' || !u.npc?.quests) continue;
     const m = npcQuestMarker(p, u.npc.id);
-    if (m !== 'available' && m !== 'turnin') continue;
+    if (!m) continue;
+    if (!questieOn() && m !== 'available' && m !== 'turnin') continue;
     const [x, y] = toPx(u.pos.x, u.pos.z);
-    glyph(ctx, x, y, m === 'turnin' ? '?' : '!', '#ffd100');
+    const gray = m === 'low' || m === 'progress';
+    glyph(ctx, x, y, m === 'turnin' || m === 'progress' ? '?' : '!', gray ? '#a8a8a8' : '#ffd100');
+  }
+  // focused quest: a ring around its next stop
+  if (questie.focus) {
+    const t = guideTarget(p, questie.focus);
+    if (t && !inDungeon(t.x)) {
+      const [x, y] = toPx(t.x, t.z);
+      ctx.beginPath(); ctx.arc(x, y, Math.max(10, W / 50), 0, Math.PI * 2);
+      ctx.lineWidth = 3; ctx.strokeStyle = questColor(p, questie.focus); ctx.stroke();
+    }
   }
   if (p.corpse) { const [x, y] = toPx(p.corpse.x, p.corpse.z); glyph(ctx, x, y, '✝', '#fff'); }
   const pos = inDungeon(p.pos.x) ? { x: 80, z: -540 } : p.pos;
@@ -138,5 +174,5 @@ export function drawWorldMap(cv) {
   ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(7, 8); ctx.lineTo(0, 4); ctx.lineTo(-7, 8); ctx.closePath();
   ctx.fillStyle = '#ffe060'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
   ctx.restore();
-  void TOWNS;
+  void TOWNS; void drawBadge;
 }

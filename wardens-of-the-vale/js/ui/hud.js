@@ -10,12 +10,13 @@ import { ABILITIES, castAbility, checkCast, rankData, knownRank, cooldownLeft, a
 import { canAttack, distance, rangeTo, inMeleeRange, friendly } from '../engine/combat.js';
 import { useItem, countItem, allSlots } from '../engine/inventory.js';
 import { setTarget, cycleTarget, interact, input, nearestInteractable, interactObject, cam } from '../engine/player.js';
-import { npcQuestMarker, questState, goalText, isComplete } from '../engine/quests.js';
+import { npcQuestMarker, questState, goalText, isComplete, goalProgress, goalTarget } from '../engine/quests.js';
 import { QUESTS } from '../data/quests.js';
 import { releaseSpirit, canResurrect, resurrectAtCorpse, lootEmpty } from '../engine/world.js';
 import { drawMinimap, minimapZoom } from './minimap.js';
 import { petHappinessText } from '../engine/summons.js';
 import { unspentTalentPoints } from '../engine/progression.js';
+import { questsForUnit, unitQuestLines, questColor, questie, setFocus, trackerHint, fmtDist, questieOn } from './questie.js';
 
 const $ = (id) => document.getElementById(id);
 export const CLASS_ICON = { warrior: 'swords', paladin: 'hammer', hunter: 'bow', rogue: 'dagger', priest: 'star', shaman: 'totem', mage: 'fireball', warlock: 'demon', druid: 'paw' };
@@ -356,6 +357,15 @@ function updateTargetFrame() {
     setWidth(tc.querySelector('i'), f * 100);
     setText(tc.querySelector('span'), c.ability.name);
   } else tc.hidden = true;
+  // Questie: what this creature still counts toward
+  const tq = el.querySelector('.tquest');
+  const lines = questieOn() && t.kind === 'mob' ? unitQuestLines(p, t) : [];
+  const qk = lines.map((l) => l.text).join('|');
+  if (tq._k !== qk) {
+    tq._k = qk;
+    tq.hidden = !lines.length;
+    tq.innerHTML = lines.map((l) => `<div><i style="background:${l.color}"></i>${escapeHTML(l.text)}</div>`).join('');
+  }
   // target of target
   const tot = el.querySelector('.tot');
   const tt = t.target;
@@ -471,9 +481,9 @@ function updateNameplates() {
     if (!pl) {
       const el = document.createElement('div');
       el.className = 'np';
-      el.innerHTML = `<div class="mark"></div><div class="np-name"></div><div class="np-title"></div><div class="np-bar"><i></i></div><div class="np-cast" hidden><i></i></div>`;
+      el.innerHTML = `<div class="mark"></div><div class="np-name"><span class="np-q" hidden></span><span class="np-n"></span></div><div class="np-title"></div><div class="np-bar"><i></i></div><div class="np-cast" hidden><i></i></div>`;
       overlay().appendChild(el);
-      pl = { el, mark: el.querySelector('.mark'), name: el.querySelector('.np-name'), title: el.querySelector('.np-title'), bar: el.querySelector('.np-bar'), fill: el.querySelector('.np-bar i'), cast: el.querySelector('.np-cast'), castI: el.querySelector('.np-cast i'), key: '' };
+      pl = { el, mark: el.querySelector('.mark'), q: el.querySelector('.np-q'), nm: el.querySelector('.np-n'), name: el.querySelector('.np-name'), title: el.querySelector('.np-title'), bar: el.querySelector('.np-bar'), fill: el.querySelector('.np-bar i'), cast: el.querySelector('.np-cast'), castI: el.querySelector('.np-cast i'), key: '' };
       plates.set(u, pl);
     }
     const hostileish = canAttack(p, u);
@@ -482,7 +492,7 @@ function updateNameplates() {
     const key = u.name + color + lvl + (u.title ?? '');
     if (pl.key !== key) {
       pl.key = key;
-      pl.name.innerHTML = `${escapeHTML(u.name)}${lvl}`;
+      pl.nm.innerHTML = `${escapeHTML(u.name)}${lvl}`;
       pl.name.style.color = color;
       pl.title.textContent = u.title ? `<${u.title}>` : '';
     }
@@ -495,6 +505,14 @@ function updateNameplates() {
       else if (m === 'progress') { mark = '?'; mcls = 'progress'; }
     }
     if (pl.mark.textContent !== mark) { pl.mark.textContent = mark; pl.mark.className = 'mark ' + mcls; }
+    // Questie: creatures you still need for a quest carry its badge
+    const need = !isNpc && questieOn() ? questsForUnit(p, u) : null;
+    const qkey = need ? need[0].id + (QUESTS[need[0].id].goals[need[0].i].kind === 'kill' ? ':slay' : ':loot') : '';
+    if (pl.qkey !== qkey) {
+      pl.qkey = qkey;
+      pl.q.hidden = !need;
+      if (need) { pl.q.textContent = qkey.endsWith('slay') ? '✕' : '●'; pl.q.style.background = questColor(p, need[0].id); }
+    }
     const showBar = !isNpc && !u.dead && (hostileish ? (u.inCombat || u === p.target || u.hp < u.maxHp) : (u.kind === 'companion' || u.kind === 'pet'));
     pl.bar.style.display = showBar ? '' : 'none';
     if (showBar) pl.fill.style.width = (u.hp / u.maxHp) * 100 + '%';
@@ -599,13 +617,29 @@ function updateTracker() {
   const ids = Object.keys(p.quests.active).filter((id) => !p.untracked?.[id]).slice(0, 6);
   const el = $('questTracker');
   if (!ids.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="qt-h">Quests</div>` + ids.map((id) => {
+  el.classList.toggle('collapsed', !!G.settings.trackerCollapsed);
+  el.innerHTML = `<div class="qt-h">Quests <span class="qt-toggle">${G.settings.trackerCollapsed ? '▸ ' + ids.length : '▾'}</span></div>` + ids.map((id) => {
     const q = QUESTS[id];
     const done = isComplete(p, id);
-    const goals = q.goals.length ? q.goals.map((g, i) => `<div class="qt-g">- ${escapeHTML(goalText(p, q, i))}</div>`).join('') : `<div class="qt-g">- ${escapeHTML(q.obj)}</div>`;
-    return `<div class="qt-q" data-q="${id}"><div class="qt-name${done ? ' done' : ''}">${escapeHTML(q.name)}${done ? ' (Complete)' : ''}</div>${done ? `<div class="qt-g">- Return to ${escapeHTML(npcName(q.turnin))}</div>` : goals}</div>`;
+    const goals = q.goals.length ? q.goals.map((g, i) => `<div class="qt-g${goalProgress(p, q, i) >= goalTarget(g) ? ' done' : ''}">- ${escapeHTML(goalText(p, q, i))}</div>`).join('') : `<div class="qt-g">- ${escapeHTML(q.obj)}</div>`;
+    return `<div class="qt-q${questie.focus === id ? ' focus' : ''}" data-q="${id}" style="--qc:${questColor(p, id)}"><div class="qt-name${done ? ' done' : ''}"><i class="qt-dot"></i>${escapeHTML(q.name)}${done ? ' (Complete)' : ''}<span class="qt-dir"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 L32 30 L20 23 L8 30 Z"/></svg><b></b></span></div>${done ? `<div class="qt-g">- Return to ${escapeHTML(npcName(q.turnin))}</div>` : goals}</div>`;
   }).join('');
-  el.querySelectorAll('.qt-q').forEach((n) => n.addEventListener('click', () => G.ui.openQuestLog(n.dataset.q)));
+  el.querySelectorAll('.qt-q').forEach((n) => n.addEventListener('click', () => { setFocus(n.dataset.q); trackerDirty = true; }));
+  el.querySelector('.qt-h').addEventListener('click', () => { G.settings.trackerCollapsed = !G.settings.trackerCollapsed; trackerDirty = true; updateTracker(); });
+  updateTrackerHints();
+}
+// distance and a little arrow toward each tracked quest
+function updateTrackerHints() {
+  const p = G.player;
+  for (const n of $('questTracker').querySelectorAll('.qt-q')) {
+    const dir = n.querySelector('.qt-dir');
+    const h = questieOn() ? trackerHint(p, n.dataset.q) : null;
+    dir.hidden = !h;
+    if (!h) continue;
+    dir.querySelector('svg').style.transform = `rotate(${h.rot.toFixed(2)}rad)`;
+    setText(dir.querySelector('b'), fmtDist(h.dist));
+    n.classList.toggle('focus', questie.focus === n.dataset.q);
+  }
 }
 function npcName(id) { return G.units.find((u) => u.npc?.id === id)?.name ?? id; }
 
@@ -647,6 +681,7 @@ export function updateHud(dt) {
     updateParty();
     updateDeath();
     updateTracker();
+    updateTrackerHints();
     const mm = document.querySelector('#microMenu [data-win="talents"]');
     if (mm) mm.classList.toggle('alert', unspentTalentPoints(p) > 0);
     const clock = new Date();

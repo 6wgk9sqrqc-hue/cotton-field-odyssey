@@ -1,6 +1,7 @@
 // All dialog windows, the item cursor and context menus.
 import { G, emit, on } from '../state.js';
 import { applyQuality } from '../engine/scene.js';
+import { questie, questColor, setFocus, trackerHint, fmtDist } from './questie.js';
 import { icon, itemIcon } from './icons.js';
 import { itemTooltip, spellTooltip, trainerTooltip, bindTooltip, showTooltip, hideTooltip } from './tooltip.js';
 import { classIcon, chat } from './hud.js';
@@ -617,10 +618,18 @@ function renderLoot(m) {
 
 // ---------- world map ----------
 function renderMap() {
+  const p = G.player;
   const size = Math.floor(Math.max(240, Math.min(window.innerWidth - 48, window.innerHeight - 120, 760)));
   const w = openWin('map', 'World Map: The Vale', { width: size + 28, pos: 'center', top: 8 });
-  w.b.innerHTML = `<div class="map-wrap"><canvas id="worldMap" width="900" height="900" style="width:${size}px"></canvas></div><div class="legend"><span><b style="color:#ffd100">!</b> quest available</span><span><b style="color:#ffd100">?</b> quest complete</span><span><b style="color:#60ff60">▲</b> known flight path</span><span><b style="color:#b070ff">●</b> The Hollow Spire (dungeon)</span></div>`;
+  const ids = Object.keys(p.quests.active);
+  const legend = ids.length ? `<div class="map-quests">${ids.map((id) => {
+    const q = QUESTS[id];
+    const h = trackerHint(p, id);
+    return `<button class="mq${questie.focus === id ? ' on' : ''}" data-q="${id}"><i style="background:${questColor(p, id)}"></i><span>${escapeHTML(q.name)}</span><small>${h ? fmtDist(h.dist) : ''}</small></button>`;
+  }).join('')}</div>` : '';
+  w.b.innerHTML = `<div class="map-wrap"><canvas id="worldMap" width="900" height="900" style="width:${size}px"></canvas></div>${legend}<div class="legend"><span><b style="color:#ffd100">!</b> quest available</span><span><b style="color:#a8a8a8">!</b> soon</span><span><b style="color:#ffd100">?</b> quest complete</span><span><span class="lg-badge">✕</span> slay</span><span><span class="lg-badge">●</span> loot</span><span><span class="lg-badge">◆</span> use or collect</span><span><span class="lg-badge">★</span> explore</span><span><b style="color:#60ff60">▲</b> flight path</span><span><b style="color:#b070ff">●</b> The Hollow Spire</span></div>`;
   drawWorldMap($('worldMap'));
+  w.b.querySelectorAll('.mq').forEach((b) => b.addEventListener('click', () => { setFocus(b.dataset.q); renderMap(); }));
 }
 
 // ---------- game menu ----------
@@ -630,6 +639,8 @@ function renderMenu() {
   w.b.innerHTML = `<div class="help">
     <div class="setting"><label><input type="checkbox" id="setNameplates" ${s.nameplates ? 'checked' : ''}> Show enemy nameplates (V)</label></div>
     <div class="setting"><label><input type="checkbox" id="setAutoLoot" ${s.autoLoot ? 'checked' : ''}> Auto loot</label></div>
+    <div class="setting"><label><input type="checkbox" id="setQuestie" ${s.questie !== false ? 'checked' : ''}> Questie: show quest objectives on the maps and over creatures</label></div>
+    <div class="setting"><label><input type="checkbox" id="setQuestArrow" ${s.questArrow !== false ? 'checked' : ''}> Quest guide arrow (tap a quest in the tracker to follow it)</label></div>
     <div class="setting"><label><input type="checkbox" id="setSound" ${s.sound ? 'checked' : ''}> Sound effects</label></div>
     <div class="setting"><label for="setScale">Interface scale</label><input type="range" id="setScale" min="0.6" max="1.3" step="0.05" value="${s.uiScale ?? ''}"></div>
     <div class="setting"><span>Graphics</span> <span class="seg">${['low', 'medium', 'high'].map((q) => `<button class="btn small ${G.quality === q ? '' : 'ghosty'}" data-q="${q}">${q.charAt(0).toUpperCase() + q.slice(1)}</button>`).join(' ')}</span></div>
@@ -646,6 +657,8 @@ function renderMenu() {
   </div>`;
   $('setNameplates').addEventListener('change', (e) => { s.nameplates = e.target.checked; });
   $('setAutoLoot').addEventListener('change', (e) => { s.autoLoot = e.target.checked; });
+  $('setQuestie').addEventListener('change', (e) => { s.questie = e.target.checked; });
+  $('setQuestArrow').addEventListener('change', (e) => { s.questArrow = e.target.checked; });
   $('setSound').addEventListener('change', (e) => { s.sound = e.target.checked; });
   $('setScale').addEventListener('input', (e) => { s.uiScale = +e.target.value; document.documentElement.style.setProperty('--ui', s.uiScale); });
   w.b.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => { applyQuality(b.dataset.q); renderMenu(); }));

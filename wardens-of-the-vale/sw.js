@@ -1,7 +1,7 @@
 // Offline support: serve from the network when possible so updates arrive,
 // and fall back to the cache when offline. Every same-origin file the game
 // loads is cached on first use.
-const CACHE = 'wardens-v3';
+const CACHE = 'wardens-v4';
 const CORE = ['./', './index.html', './manifest.json', './css/game.css', './js/main.js', './js/lib/three.module.min.js', './photos/icon.png'];
 
 self.addEventListener('install', (e) => {

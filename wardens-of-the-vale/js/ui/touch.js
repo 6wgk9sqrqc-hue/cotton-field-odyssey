@@ -19,11 +19,39 @@ let built = false;
 
 // Cluster geometry in CSS pixels, inside a box anchored bottom-right. The
 // jump button sits in the corner like Roblox's; Attack is just left of it and
-// the abilities fan out in two arcs.
-const BOX_W = 330, BOX_H = 256, CX = BOX_W - 56, CY = BOX_H - 52;
-const polar = (r, deg) => [CX + Math.cos((deg * Math.PI) / 180) * r, CY - Math.sin((deg * Math.PI) / 180) * r];
-const SLOT_POS = [polar(102, 135), polar(102, 90), polar(178, 180), polar(178, 155), polar(178, 130), polar(178, 105)];
-const UTIL_POS = { thTarget: polar(178, 80), thPage: polar(250, 170) };
+// the abilities fan out in two arcs. Held upright the phone gets a tighter
+// layout that leaves the left half free for the thumbstick.
+function geometry(portrait) {
+  const L = portrait
+    ? { w: 222, h: 270, cx: 222 - 46, cy: 270 - 44, jump: 70, main: 62, slot: 52, util: 40, mainR: 80, inner: [84, [128, 90]], outer: [146, [180, 150, 120, 90]], target: [200, 110], page: [200, 85] }
+    : { w: 330, h: 256, cx: 330 - 56, cy: 256 - 52, jump: 84, main: 72, slot: 56, util: 46, mainR: 104, inner: [102, [135, 90]], outer: [178, [180, 155, 130, 105]], target: [178, 80], page: [250, 170] };
+  const polar = (r, deg) => [L.cx + Math.cos((deg * Math.PI) / 180) * r, L.cy - Math.sin((deg * Math.PI) / 180) * r];
+  L.slots = [...L.inner[1].map((a) => polar(L.inner[0], a)), ...L.outer[1].map((a) => polar(L.outer[0], a))];
+  L.mainPos = polar(L.mainR, 180);
+  L.targetPos = polar(...L.target);
+  L.pagePos = polar(...L.page);
+  return L;
+}
+let layoutKey = '';
+function layoutCluster() {
+  const portrait = window.innerHeight > window.innerWidth;
+  const key = portrait ? 'p' : 'l';
+  if (key === layoutKey) return;
+  layoutKey = key;
+  const L = geometry(portrait);
+  const cluster = $('thCluster');
+  cluster.style.width = L.w + 'px';
+  cluster.style.height = L.h + 'px';
+  sizeAt($('thJump'), [L.cx, L.cy], L.jump);
+  sizeAt($('thMain'), L.mainPos, L.main);
+  cluster.querySelectorAll('.th-slot').forEach((el) => sizeAt(el, L.slots[+el.dataset.k], L.slot));
+  sizeAt($('thTarget'), L.targetPos, L.util);
+  sizeAt($('thPage'), L.pagePos, L.util);
+}
+function sizeAt(el, pos, size) {
+  el.style.width = el.style.height = size + 'px';
+  place(el, pos, size);
+}
 
 function place(el, [x, y], size) {
   el.style.left = (x - size / 2) + 'px';
@@ -65,17 +93,14 @@ export function initTouchHud() {
       <div class="sheet-foot">${document.fullscreenEnabled ? '<button class="btn small ghosty" id="thFull">Full screen</button>' : ''}<button class="btn small ghosty" id="thSheetClose">Close</button></div>
     </div>`;
   const cluster = $('thCluster');
-  cluster.style.width = BOX_W + 'px';
-  cluster.style.height = BOX_H + 'px';
-  place($('thJump'), [CX, CY], 84);
-  place($('thMain'), polar(104, 180), 72);
   cluster.querySelectorAll('.th-slot').forEach((el) => {
     const k = +el.dataset.k;
-    place(el, SLOT_POS[k], 56);
     slots[k] = { el, img: el.querySelector('img'), count: el.querySelector('.count'), cd: el.querySelector('.cd'), cdt: el.querySelector('.cdt'), entry: undefined };
     bindSlot(el, k);
   });
-  for (const id in UTIL_POS) place($(id), UTIL_POS[id], 46);
+  layoutCluster();
+  window.addEventListener('resize', layoutCluster);
+  window.addEventListener('orientationchange', () => setTimeout(layoutCluster, 200));
   $('thTarget').querySelector('img').src = icon('target');
   $('thQuests').querySelector('img').src = icon('scroll');
   $('thBags').querySelector('img').src = icon('bag');
@@ -99,7 +124,7 @@ export function initTouchHud() {
   if ($('thFull')) press($('thFull'), () => {
     $('thSheet').hidden = true;
     if (document.fullscreenElement) { document.exitFullscreen?.().catch(() => {}); return; }
-    document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+    document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
   });
   $('thSheet').querySelectorAll('[data-open]').forEach((b) => press(b, () => {
     $('thSheet').hidden = true;

@@ -49,6 +49,25 @@ The game is built for phones (every device gets the touch layout):
   used with nothing targeted pick the nearest enemy. Hold one to move or clear it.
 - The ☰ button opens every window; windows fill the screen.
 
+Hold the phone either way: sideways or upright. Held upright, the frames stack on the left, the
+minimap and menu buttons sit on the right, and the thumb controls tighten up so the left half of the
+screen stays free for the stick.
+
+### Questie
+
+Like the classic Questie add-on, the game shows where every quest happens:
+
+- Quest givers show **!** (gray when you are a little too low) and turn-ins **?** on the world map
+  and minimap.
+- Each active quest gets a color. Its objectives are marked as dashed areas with a badge: ✕ creatures
+  to slay, ● creatures that drop what you need, ◆ things to collect or use, ★ places to explore.
+- Creatures you still need carry the quest's badge on their nameplate, and the target frame lists
+  what they count toward ("Grain Weevil slain: 3/8").
+- The tracker shows how far away each quest is and which way. Tap a quest to follow it: a guide
+  arrow points the way to the nearest creature, object or area, then to whoever takes the quest back.
+  New quests are followed automatically. Tap "Quests" to fold the tracker away.
+- Both can be switched off in Settings.
+
 On a computer, WASD moves the same way, the mouse drags the camera, and dragging on the left side
 with the mouse works as the stick.
 
