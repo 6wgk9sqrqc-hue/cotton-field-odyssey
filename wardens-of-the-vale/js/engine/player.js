@@ -393,7 +393,8 @@ export function updatePlayer(dt) {
   }
   let mx = 0, mz = 0, speedMul = 1;
   if (mag) {
-    const a = cam.yaw + Math.PI + Math.atan2(ix, iz);
+    // facing angles grow toward the screen's left, so a push to the right subtracts
+    const a = cam.yaw + Math.PI - Math.atan2(ix, iz);
     mx = Math.sin(a); mz = Math.cos(a);
     p.facing = turnToward(p.facing, a, dt * 14);
     speedMul = mag;

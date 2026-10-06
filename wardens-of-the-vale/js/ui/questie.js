@@ -201,7 +201,8 @@ export function drawQuestPOIs(ctx, p, toPx, scale, opts = {}) {
 function relAngle(p, x, z) {
   const a = Math.atan2(x - p.pos.x, z - p.pos.z);
   const f = cam.yaw + Math.PI;
-  let d = a - f;
+  // screen rotation is clockwise while facing angles grow counter-clockwise
+  let d = f - a;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   return d;
