@@ -23,3 +23,9 @@
 - Styles (retired into Skills) · Edit-to-branch (not in new experience) · Self-check prompts (discouraged on Opus 5) · Learning style UI · Cmd+K chat search (doesn't exist) · Model picker plan mapping (too messy)
 
 ## Nightly batches
+### 2026-10-18 extra batch (made in-session)
+- Match my voice · Outline first · Cut it in half · Kill the jargon · Make it skimmable
+- Pre-mortem · Argue the other side (steelman) · Score your options · 10-10-10 test · And then what? (second-order)
+- Say no nicely · Predict the questions · Write the agenda · Make it a template · Find the first step
+- Cook from your fridge (photo) · Decode the fine print · Plan a whole trip · Sort your spending · Find the perfect gift
+- Define done · Share your constraints · Chain your prompts · Restart with a summary · Ask for edge cases
