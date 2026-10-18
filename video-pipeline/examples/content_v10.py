@@ -30,3 +30,5 @@ TIPS = [
                  detail="Type slash compact, and Claude Code summarizes the conversation to free up room, keeping what matters.")),
 ]
 OUTRO_VO = "Save this, and follow for daily AI finds."
+
+CAPTION = "…3 coding tricks: paste the error, CLAUDE.md, plan mode 💻⚡️"

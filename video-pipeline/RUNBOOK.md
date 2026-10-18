@@ -18,9 +18,18 @@ with captions. Runs at ~9pm Asia/Jerusalem; posting is the NEXT day: 05:00, 09:3
    `printf "v1 out1.mp4\n..." | xargs -P 2 -L 1 ./render_one.sh` (run in foreground; avoid self-matching pgrep).
 6. QA each: `cd vN && python3 ../qa_prep.py out.mp4 ../models/asr/sherpa-onnx-whisper-base.en && python3 ../sentence_asr.py qa/final16k.wav ../models/asr/sherpa-onnx-whisper-base.en`.
    Fix real mishearings (not Claude/clawed/cloud homophones) and re-render. Look at qa/frames for clipping/sync.
-7. Upload to Google Drive folder "Claude Tips Reels/<posting date YYYY-MM-DD = tomorrow in Asia/Jerusalem>" (create if missing): the 5 MP4s plus
-   `posting_plan.md` with, per video: post time (Asia/Jerusalem), Instagram caption (hook line, 5 tips as bullets,
-   CTA "Save this + follow for daily AI finds", 5-8 hashtags like #ClaudeAI #AItips #productivity), and a cover-frame note.
+7. POSTER SPEC (must match exactly):
+   - Video: MP4, 9:16 (our 1080x1920 is fine), 55-62 s each. voice.py pads short scripts to 55.6 s; if one runs
+     over 62 s, shorten its narration and rebuild.
+   - Each vN/content.py has CAPTION = "…3 <topic> tricks: <tip1>, <tip2>, <tip3> <one emoji>⚡️" (starts with the
+     "…" ellipsis character), under 100 characters, NO hashtags. Use 3 of the video's tips in short form.
+     Examples: "…3 study tricks: quiz me, tutor mode, analogies 📚⚡️" / "…3 coding tricks: paste the error, CLAUDE.md, plan mode 💻⚡️"
+   - Name the files Claude_Tips_<YYYY-MM-DD>_<n>_<Theme>.mp4 (n = posting order 1-5).
+   - Run: python3 make_plan.py <outdir> v1:<file1> v2:<file2> v3:<file3> v4:<file4> v5:<file5>
+     It must print 5 OK lines; it writes <outdir>/posting_plan.md (filename, post time 05:00/09:30/14:00/18:30/23:00
+     Asia/Jerusalem, caption). Fix and rerun on any failure. No cover art needed.
+   Upload to Google Drive folder "Claude Tips Reels/<posting date YYYY-MM-DD = tomorrow in Asia/Jerusalem>"
+   (create if missing): the 5 MP4s plus posting_plan.md, nothing else.
 8. Append the 25 tips under "Nightly batches" in `used_tips.md`, commit, `git push -u origin video-pipeline`.
 9. Final message: Drive link, the 5 titles, anything dropped in fact-check. If something failed, say exactly what.
 Never post to Instagram or any social account.

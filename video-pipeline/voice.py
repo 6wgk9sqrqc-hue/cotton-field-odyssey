@@ -54,7 +54,7 @@ t += 0.15
 c = say(OUTRO_VO)
 clips.append((t, c))
 timeline["outro_vo"] = [round(t, 3), round(t + len(c) / SR, 3)]
-total = t + len(c) / SR + 1.9
+total = max(t + len(c) / SR + 1.9, 55.6)  # poster spec 55-62 s: short scripts hold the end card longer
 timeline["total"] = round(total, 3)
 
 dry = np.zeros(int(total * SR) + SR)

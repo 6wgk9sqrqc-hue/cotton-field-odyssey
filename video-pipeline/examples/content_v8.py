@@ -30,3 +30,5 @@ TIPS = [
                  detail="On web or desktop, go to Settings, Privacy, Export data, and Claude emails you a download link.")),
 ]
 OUTRO_VO = "Save this, and follow for daily AI finds."
+
+CAPTION = "…3 settings tricks: share a chat, edit in place, monthly recap ⚙️⚡️"
