@@ -23,9 +23,15 @@
 - Styles (retired into Skills) · Edit-to-branch (not in new experience) · Self-check prompts (discouraged on Opus 5) · Learning style UI · Cmd+K chat search (doesn't exist) · Model picker plan mapping (too messy)
 
 ## Nightly batches
-### 2026-10-18 extra batch (made in-session)
-- Match my voice · Outline first · Cut it in half · Kill the jargon · Make it skimmable
-- Pre-mortem · Argue the other side (steelman) · Score your options · 10-10-10 test · And then what? (second-order)
+### Batch 3 (#11-15, posting 2026-10-19) — made by the nightly run; its push failed, recorded here from its transcript
+- Paste a writing sample (match your voice) · Cut it in half · Outline before drafting · Swap jargon for plain words · Make it skimmable (headers/bullets)
+- Effort level (model menu > Effort) · Ask for a real file (Excel/Word/PowerPoint/PDF) · Quiet hours & break reminders (Settings > Time and focus) · Dyslexic friendly font (Settings > Appearance) · App language (profile > Language)
+- Pre-mortem · Steelman the other side · Score options against criteria · Name your limits (constraints) · And then what? (second-order effects)
+- @ file mentions · ! shell mode · claude -c / -r (continue/resume) · Subagents (.claude/agents) · Hooks (/hooks)
+- Tailor your resume to the job post · Mock interview · STAR stories · Cover letter from 3 reasons · Rehearse the salary talk
+### Extra batch (made in-session 2026-10-18)
+- Ask for 50 ideas · Worst ideas first (reverse brainstorm) · Mash two ideas together · Add a weird limit · Make it pick a winner
+- Chat in your new language · Corrections at the end · Flashcards from the chat · Make it sound native · Survival phrases for a trip
 - Say no nicely · Predict the questions · Write the agenda · Make it a template · Find the first step
 - Cook from your fridge (photo) · Decode the fine print · Plan a whole trip · Sort your spending · Find the perfect gift
-- Define done · Share your constraints · Chain your prompts · Restart with a summary · Ask for edge cases
+- Define done · Number your questions · Chain your prompts · Restart with a summary · Ask for edge cases
