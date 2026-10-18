@@ -2,3 +2,4 @@ models/
 fontdl/
 v*/
 __pycache__/
+*.log
