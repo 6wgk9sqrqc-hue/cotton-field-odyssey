@@ -1,7 +1,7 @@
 # Nightly Claude Tips & Tricks batch (Instagram Reels)
 
-Goal: 5 new 1080x1920 videos in the established neon "CLAUDE AI / TIPS & TRICKS" style, uploaded to Google Drive
-with captions. Runs at ~9pm Asia/Jerusalem; posting is the NEXT day: 05:00, 09:30, 14:00, 18:30, 23:00 Asia/Jerusalem (4.5 h apart).
+Goal: 5 new 1080x1920 videos in the established neon "CLAUDE AI / TIPS & TRICKS" style, delivered in the chat
+with captions; the user forwards the MP4s to the poster. Runs at ~9pm Asia/Jerusalem; posting is the NEXT day: 05:00, 09:30, 14:00, 18:30, 23:00 Asia/Jerusalem (4.5 h apart).
 
 1. `git fetch origin video-pipeline && git checkout video-pipeline`, then `cd video-pipeline && ./setup.sh`.
 2. Pick 25 NEW tips (5 themed videos x 5) not in `used_tips.md`. Mix prompting techniques (any plan) and features.
@@ -28,8 +28,12 @@ with captions. Runs at ~9pm Asia/Jerusalem; posting is the NEXT day: 05:00, 09:3
    - Run: python3 make_plan.py <outdir> v1:<file1> v2:<file2> v3:<file3> v4:<file4> v5:<file5>
      It must print 5 OK lines; it writes <outdir>/posting_plan.md (filename, post time 05:00/09:30/14:00/18:30/23:00
      Asia/Jerusalem, caption). Fix and rerun on any failure. No cover art needed.
-   Upload to Google Drive folder "Claude Tips Reels/<posting date YYYY-MM-DD = tomorrow in Asia/Jerusalem>"
-   (create if missing): the 5 MP4s plus posting_plan.md, nothing else.
+   DELIVERY: do NOT upload MP4s to Google Drive (the connector only takes inline content; 20 MB videos don't fit).
+   Send the 5 MP4s plus posting_plan.md in the chat with SendUserFile (status proactive), in posting order.
+   Also put posting_plan.md (only) in Drive folder "Claude Tips Reels/<posting date YYYY-MM-DD = tomorrow in
+   Asia/Jerusalem>" (create if missing): create_file with base64Content (base64 -w0), contentMimeType text/markdown,
+   disableConversionToGoogleType true, so emoji survive; check the returned fileSize matches. If Drive fails, say so
+   and carry on: the chat delivery is what matters.
 8. Append the 25 tips under "Nightly batches" in `used_tips.md`, commit, `git push -u origin video-pipeline`.
-9. Final message: Drive link, the 5 titles, anything dropped in fact-check. If something failed, say exactly what.
+9. Final message: the 5 captions in posting order, the posting_plan.md Drive link, anything dropped in fact-check. If something failed, say exactly what.
 Never post to Instagram or any social account.
