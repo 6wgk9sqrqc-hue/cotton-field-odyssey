@@ -35,3 +35,15 @@
 - Say no nicely · Predict the questions · Write the agenda · Make it a template · Find the first step
 - Cook from your fridge (photo) · Decode the fine print · Plan a whole trip · Sort your spending · Find the perfect gift
 - Define done · Number your questions · Chain your prompts · Restart with a summary · Ask for edge cases
+### Batch 4 (#16-20, posting 2026-10-20) — nightly run; its push failed, recorded here from its transcript
+- 30-second pitch · Lead with their problem · Add one hard number · Turn features into wins (benefits) · End with one clear ask
+- claude -p (print mode) · claude -w (worktrees) · /context · /btw (side question) · /security-review
+- Make the habit tiny · Stack it on a routine · Plan for bad days (if-then) · Swap a bad habit, don't drop it · Weekly check-in
+- Import memory from another AI (Settings > Memory > Start import) · Ask for a diagram (custom visuals) · Ask Claude via Siri/Spotlight (iOS 18+) · Computer use (Settings > General) · Monthly API credits for Max/Team (Settings > Billing)
+- Nail the first line (10 hooks) · Turn one post into five (repurpose) · Script a 60-second video · Find your content pillars · Batch a week of posts
+### Extra batch 2 (made in-session 2026-10-19)
+- Workout plan · Meal prep + grocery list · Sleep wind-down routine · Desk stretch breaks · Questions for your doctor
+- Bedtime story starring your kid · Chore chart · Rainy-day activities · Homework hints, not answers · Family packing list
+- Compare plans/offers · Negotiate your bills (script) · Savings goal plan · Explain a confusing bill · Audit your subscriptions
+- Product descriptions · Reply to a bad review · Write your bio · FAQ from customer emails · Launch email
+- List your assumptions · Say what you already tried · Zoom in on one part · Turn it into a checklist · Ask what you're missing
